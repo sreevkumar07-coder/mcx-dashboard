@@ -1,165 +1,97 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gold Forward Premium Dashboard (Spot-only test)</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 18px; color:#111; }
-    h2 { margin: 0 0 8px 0; }
-    .card { border: 1px solid #d0d7de; border-radius: 10px; padding: 14px; margin: 12px 0; }
-    .ok { color: #0a7a28; }
-    .bad { color: #b42318; }
-    .muted { color: #6b7280; font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: right; }
-    th { background: #f3f4f6; text-align: center; }
-    .left { text-align: left; }
-    code { background:#f6f8fa; padding:2px 6px; border-radius:6px; }
-    button { padding: 8px 12px; border: 0; border-radius: 9px; cursor: pointer; background:#111827; color:#fff; }
-  </style>
+<meta charset="UTF-8">
+<title>Gold Dashboard (Live Spot)</title>
+
+<style>
+body { font-family: Arial; padding: 20px; }
+h2 { margin-bottom: 10px; }
+.box {
+  border: 1px solid #ccc;
+  padding: 15px;
+  width: 320px;
+  background: #f9f9f9;
+}
+.status { margin-bottom: 10px; }
+.meta { margin-top: 15px; font-size: 12px; color: gray; }
+</style>
+
 </head>
 
 <body>
-  <h2>Gold Forward Premium Dashboard — Spot-only test (No MCX)</h2>
-  <div class="muted">
-    This page tests only <b>XAU/USD</b> and <b>USD/INR</b> fetching + your spot conversion formula.
-    It uses the free CDN JSON endpoints from the exchange-api project. 【1-19e1ec】【2-bb397a】
-  </div>
 
-  <div class="card">
-    <div id="statusLine">Loading…</div>
-    <div class="muted" id="lastUpdated"></div>
-    <div style="margin-top:10px;">
-      <button onclick="loadAll()">Refresh now</button>
-    </div>
-  </div>
+<h2>Gold Spot Dashboard (Live)</h2>
 
-  <div class="card" id="resultsCard">
-    <div id="results"></div>
-  </div>
+<div class="status" id="status">Loading...</div>
 
-  <div class="card">
-    <div class="left"><b>Diagnostics</b> (shows exactly what failed)</div>
-    <div id="diag" class="muted" style="margin-top:8px;"></div>
-    <div class="muted" style="margin-top:8px;">
-      Tip: after updating <code>index.html</code> in GitHub, open your site with <code>?v=2</code> (or press Ctrl+F5) to bypass browser cache.
-    </div>
-  </div>
+<div class="box" id="output"></div>
+
+<div class="meta" id="time"></div>
 
 <script>
-  // Your constants (unchanged)
-  const CONV = 31.99;
-  const FACTOR = 1.15;
 
-  // CDN endpoints (two independent hostnames; we try both)
-  // Documented structure: .../@latest/v1/currencies/{code}.json and Cloudflare fallback. 【1-19e1ec】【2-bb397a】
-  const SOURCES = {
-    cloudflare: (code) => `https://latest.currency-api.pages.dev/v1/currencies/${code}.json`,
-    jsdelivr:  (code) => `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${code}.json`
-  };
+// ===== CONSTANTS =====
+const conv = 31.99;
+const factor = 1.15;
 
-  function fmt(n, d=2){
-    return Number.isFinite(n) ? n.toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d}) : "—";
+// ===== FETCH USDINR =====
+async function getINR() {
+  const res = await fetch(
+    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
+  );
+  const data = await res.json();
+  return data.usd.inr;
+}
+
+// ===== FETCH XAU =====
+async function getXAU() {
+  const res = await fetch(
+    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xau.json"
+  );
+  const data = await res.json();
+
+  // xau → usd (USD per gold unit)
+  return data.xau.usd;
+}
+
+// ===== MAIN =====
+async function load() {
+  try {
+
+    document.getElementById("status").innerText = "Fetching live data...";
+
+    const inr = await getINR();
+    const xau = await getXAU();
+
+    const spot = xau * inr * conv / 1000 * factor;
+
+    document.getElementById("output").innerHTML = `
+      <b>XAU/USD</b>: ${xau.toFixed(2)}<br><br>
+      <b>USD/INR</b>: ${inr.toFixed(2)}<br><br>
+      <b>Spot (₹/10g)</b>: ${Math.round(spot)}
+    `;
+
+    document.getElementById("status").innerText = "Live ✅";
+
+    document.getElementById("time").innerText =
+      "Last updated: " + new Date().toLocaleString();
+
+  } catch (e) {
+
+    document.getElementById("status").innerText =
+      "❌ Fetch error (API unavailable)";
+
   }
+}
 
-  async function fetchJsonWithFallback(urls, diag) {
-    let lastErr = null;
-    for (const url of urls) {
-      try {
-        const r = await fetch(url, { cache: "no-store" });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const data = await r.json();
-        diag.push(`✅ Fetched: ${url}`);
-        return data;
-      } catch (e) {
-        lastErr = e;
-        diag.push(`❌ Failed: ${url} (${e.message})`);
-      }
-    }
-    throw lastErr || new Error("All fallbacks failed");
-  }
+// run
+load();
 
-  async function getUSDINR(diag){
-    const urls = [SOURCES.cloudflare("usd"), SOURCES.jsdelivr("usd")];
-    const data = await fetchJsonWithFallback(urls, diag);
-    // expected structure: { date: "...", usd: { inr: ... } } 【1-19e1ec】【2-bb397a】
-    const inr = data?.usd?.inr;
-    if (!Number.isFinite(inr)) throw new Error("usd.inr not found in response");
-    return { inr, date: data.date || null };
-  }
+// auto refresh
+setInterval(load, 60000);
 
-  async function getXAUUSD(diag){
-    // If metals are available, xau endpoint should exist per project claim that metals are included. 【2-bb397a】
-    // Prefer base XAU and read xau.usd, because that directly gives USD per XAU.
-    const urls = [SOURCES.cloudflare("xau"), SOURCES.jsdelivr("xau")];
-    const data = await fetchJsonWithFallback(urls, diag);
-    const xauusd = data?.xau?.usd;
-    if (!Number.isFinite(xauusd)) throw new Error("xau.usd not found in response (xau endpoint may be unavailable)");
-    return { xauusd, date: data.date || null };
-  }
-
-  function computeSpotINR10g(xauusd, usdinr){
-    // Your exact formula
-    return xauusd * usdinr * CONV / 1000 * FACTOR;
-  }
-
-  async function loadAll(){
-    const diag = [];
-    const statusLine = document.getElementById("statusLine");
-    const lastUpdated = document.getElementById("lastUpdated");
-    const results = document.getElementById("results");
-    const diagDiv = document.getElementById("diag");
-
-    statusLine.innerHTML = "Loading spot inputs…";
-    results.innerHTML = "";
-    diagDiv.textContent = "";
-
-    try {
-      // Fetch independently so you can see which part fails
-      const [fx, metal] = await Promise.all([
-        getUSDINR(diag),
-        getXAUUSD(diag)
-      ]);
-
-      const spot = computeSpotINR10g(metal.xauusd, fx.inr);
-
-      statusLine.innerHTML = `<span class="ok"><b>Working ✅</b></span> (No MCX)`;
-      lastUpdated.textContent = "Last updated: " + new Date().toLocaleString();
-
-      results.innerHTML = `
-        <table>
-          <tr><th class="left" colspan="2">Inputs</th><th colspan="3">Spot Conversion</th></tr>
-          <tr>
-            <th>XAU/USD (USD/oz)</th>
-            <th>USD/INR</th>
-            <th>CONV</th>
-            <th>FACTOR</th>
-            <th>Spot (₹)</th>
-          </tr>
-          <tr>
-            <td>${fmt(metal.xauusd, 2)}</td>
-            <td>${fmt(fx.inr, 4)}</td>
-            <td>${CONV}</td>
-            <td>${FACTOR}</td>
-            <td>${fmt(Math.round(spot), 0)}</td>
-          </tr>
-        </table>
-        <div class="muted" style="margin-top:8px;">
-          Spot formula used: <code>XAUUSD × USDINR × 31.99 / 1000 × 1.15</code>
-        </div>
-      `;
-    } catch (e) {
-      statusLine.innerHTML = `<span class="bad"><b>⚠️ Data fetch error</b></span> (${e.message})`;
-      lastUpdated.textContent = "Last attempted: " + new Date().toLocaleString();
-    } finally {
-      diagDiv.innerHTML = diag.map(x => `<div>${x}</div>`).join("");
-    }
-  }
-
-  loadAll();
-  // Optional auto-refresh every 60s
-  setInterval(loadAll, 60000);
 </script>
+
 </body>
 </html>
