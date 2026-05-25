@@ -6,14 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>MCX Gold Forward Premium Dashboard</title>
-<style>
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
-  padding: 0;
-  background: #1a0a0c;
+<style0a0c;<style>
   color: #fff;
   -webkit-text-size-adjust: 100%;
 }
@@ -254,14 +247,14 @@ async function load() {
 
     let html = "";
 
-    // Near expiry (Jun)
-    if (data.mcx_jun) {
-      html += buildTable(near, xau, inr, data.mcx_jun);
+    // Near expiry
+    if (data.mcx_near) {
+      html += buildTable(near, xau, inr, data.mcx_near);
     }
 
-    // Next expiry (Aug)
-    if (data.mcx_aug) {
-      html += buildTable(next, xau, inr, data.mcx_aug);
+    // Next expiry
+    if (data.mcx_next) {
+      html += buildTable(next, xau, inr, data.mcx_next);
     } else {
       html += `<div class="card">
         <div class="card-title">${monthDay(next)} Contract (${formatExpiry(next)})</div>
@@ -271,52 +264,14 @@ async function load() {
       </div>`;
     }
 
-    // Far expiry (Oct)
-    if (data.mcx_oct) {
-      html += buildTable(far, xau, inr, data.mcx_oct);
+    // Far expiry
+    if (data.mcx_far) {
+      html += buildTable(far, xau, inr, data.mcx_far);
     } else {
-      html += `<div class="card">
-        <div class="card-title">${monthDay(far)} Contract (${formatExpiry(far)})</div>
-        <p style="color:#ccc; padding:6px; font-size:11px; text-align:center;">
-          Far expiry data not available yet.
-        </p>
-      </div>`;
-    }
 
-    document.getElementById("tables").innerHTML = html;
-    lastFetchTime = Date.now();
 
-    document.getElementById("updated").innerHTML =
-      "Updated: " + new Date().toLocaleString();
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-    document.getElementById("footer").innerHTML =
-      "Near: " + formatExpiry(near) +
-      " &nbsp;|&nbsp; Next: " + formatExpiry(next) +
-      " &nbsp;|&nbsp; Far: " + formatExpiry(far) +
-      " &nbsp;|&nbsp; Auto-rolling";
-
-  } catch (e) {
-    console.error(e);
-    document.getElementById("updated").innerHTML = "❌ Data error";
-  }
-}
-
-// ===== AUTO REFRESH =====
-setInterval(function() {
-  if (!lastFetchTime || (Date.now() - lastFetchTime) > STALE_LIMIT) load();
-}, 30000);
-
-// ===== REFRESH ON APP OPEN =====
-document.addEventListener("visibilitychange", function() {
-  if (document.visibilityState === "visible") load();
-});
-
-window.addEventListener("focus", function() { load(); });
-
-// ===== INITIAL LOAD =====
-load();
-
-</script>
-
-</body>
-</html>
+body {
+  font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+  padding: 0;
