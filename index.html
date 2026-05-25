@@ -249,12 +249,29 @@ async function load() {
     const inr = Number(data.inr);
     const { near, next } = getExpiries();
 
+    // Calculate far expiry (3rd contract)
+    const evenMonths = [2, 4, 6, 8, 10, 12];
+    const expiries = [];
+    const today = new Date();
+    for (let y = today.getFullYear(); y <= today.getFullYear() + 1; y++) {
+      for (const m of evenMonths) {
+        expiries.push(new Date(y, m - 1, 5));
+      }
+    }
+    const upcoming = expiries
+      .filter(d => d >= new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+      .sort((a, b) => a - b);
+
+    const far = upcoming[2]; // 3rd upcoming expiry
+
     let html = "";
 
+    // Near expiry (Jun)
     if (data.mcx_jun) {
       html += buildTable(near, xau, inr, data.mcx_jun);
     }
 
+    // Next expiry (Aug)
     if (data.mcx_aug) {
       html += buildTable(next, xau, inr, data.mcx_aug);
     } else {
@@ -262,6 +279,18 @@ async function load() {
         <div class="card-title">${monthDay(next)} Contract (${formatExpiry(next)})</div>
         <p style="color:#ccc; padding:6px; font-size:11px; text-align:center;">
           Next expiry data not available yet.
+        </p>
+      </div>`;
+    }
+
+    // Far expiry (Oct)
+    if (data.mcx_oct) {
+      html += buildTable(far, xau, inr, data.mcx_oct);
+    } else {
+      html += `<div class="card">
+        <div class="card-title">${monthDay(far)} Contract (${formatExpiry(far)})</div>
+        <p style="color:#ccc; padding:6px; font-size:11px; text-align:center;">
+          Far expiry data not available yet.
         </p>
       </div>`;
     }
@@ -275,6 +304,7 @@ async function load() {
     document.getElementById("footer").innerHTML =
       "Near: " + formatExpiry(near) +
       " &nbsp;|&nbsp; Next: " + formatExpiry(next) +
+      " &nbsp;|&nbsp; Far: " + formatExpiry(far) +
       " &nbsp;|&nbsp; Auto-rolling";
 
   } catch (e) {
