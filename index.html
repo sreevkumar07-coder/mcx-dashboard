@@ -2,74 +2,125 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Gold Dashboard (Live Spot)</title>
+<title>Gold Analytics Dashboard</title>
 
 <style>
 body { font-family: Arial; padding: 20px; }
-h2 { margin-bottom: 10px; }
-.box {
-  border: 1px solid #ccc;
-  padding: 15px;
-  width: 320px;
-  background: #f9f9f9;
+h2 { margin-bottom: 5px; }
+
+table {
+  border-collapse: collapse;
+  margin-top: 10px;
+  width: 100%;
 }
-.status { margin-bottom: 10px; }
-.meta { margin-top: 15px; font-size: 12px; color: gray; }
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: right;
+}
+
+th {
+  background: #f2f2f2;
+}
+
+.meta {
+  margin-top: 12px;
+  font-size: 12px;
+  color: gray;
+}
+
+.status {
+  margin-bottom: 10px;
+}
 </style>
 
 </head>
 
 <body>
 
-<h2>Gold Spot Dashboard (Live)</h2>
+<h2>Gold Analytics Dashboard</h2>
 
 <div class="status" id="status">Loading...</div>
 
-<div class="box" id="output"></div>
+<div id="table"></div>
 
 <div class="meta" id="time"></div>
 
 <script>
 
 // ===== CONSTANTS =====
-const conv = 31.99;
-const factor = 1.15;
+const conv = 31.99;     // grams per oz
+const premium = 1.15;   // India premium factor
 
-// ===== FETCH USDINR =====
-async function getINR() {
+// ===== FETCH USD DATA =====
+async function getData() {
   const res = await fetch(
     "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
   );
   const data = await res.json();
-  return data.usd.inr;
-}
 
-// ===== FETCH XAU =====
-async function getXAU() {
-  const res = await fetch(
-    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xau.json"
-  );
-  const data = await res.json();
+  const usdToInr = data.usd.inr;
 
-  // xau → usd (USD per gold unit)
-  return data.xau.usd;
+  // ✅ Better XAU using inversion
+  const usdToXau = data.usd.xau;
+  const xauUsd = 1 / usdToXau;
+
+  return { usdToInr, xauUsd };
 }
 
 // ===== MAIN =====
 async function load() {
+
   try {
 
     document.getElementById("status").innerText = "Fetching live data...";
 
-    const inr = await getINR();
-    const xau = await getXAU();
+    const data = await getData();
 
-    const spot = xau * inr * conv / 1000 * factor;
+    const xau = data.xauUsd;
+    const inr = data.usdToInr;
 
-    document.getElementById("output").innerHTML = `
-      <b>XAU/USD</b>: ${xau.toFixed(2)}<br><br>
-      <b>USD/INR</b>: ${inr.toFixed(2)}<br><br>
-      <b>Spot (₹/10g)</b>: ${Math.round(spot)}
+    // ===== CORE CALCS =====
+
+    // USD per gram
+    const usdPerGram = xau / conv;
+
+    // INR per gram (spot)
+    const inrPerGram = usdPerGram * inr;
+
+    // INR per gram (with premium)
+    const indiaPrice = inrPerGram * premium;
+
+    // cross-check (direct)
+    const direct = (xau * inr) / conv;
+
+    // ===== DISPLAY =====
+
+    document.getElementById("table").innerHTML = `
+    
+    <table>
+    <tr>
+      <th colspan="2">Market Inputs</th>
+      <th colspan="2">Derived Values</th>
+    </tr>
+
+    <tr>
+      <td>XAU/USD</td><td>${xau.toFixed(2)}</td>
+      <td>USD / gram</td><td>${usdPerGram.toFixed(2)}</td>
+    </tr>
+
+    <tr>
+      <td>USD/INR</td><td>${inr.toFixed(2)}</td>
+      <td>₹ / gram (spot)</td><td>${Math.round(inrPerGram)}</td>
+    </tr>
+
+    <tr>
+      <td>Cross Check</td><td>${Math.round(direct)}</td>
+      <td>₹ / gram (India adj)</td><td>${Math.round(indiaPrice)}</td>
+    </tr>
+
+    </table>
     `;
 
     document.getElementById("status").innerText = "Live ✅";
@@ -80,15 +131,13 @@ async function load() {
   } catch (e) {
 
     document.getElementById("status").innerText =
-      "❌ Fetch error (API unavailable)";
+      "❌ Data error (API issue)";
 
   }
 }
 
 // run
 load();
-
-// auto refresh
 setInterval(load, 60000);
 
 </script>
