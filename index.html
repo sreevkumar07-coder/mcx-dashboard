@@ -52,6 +52,7 @@ h2 {
   padding: 16px;
   margin-bottom: 20px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  overflow-x: auto;
 }
 
 .card-title {
@@ -64,23 +65,40 @@ h2 {
 table {
   border-collapse: collapse;
   width: 100%;
+  min-width: 900px;
+  table-layout: fixed;
 }
+
+/* Column widths */
+col.c1 { width: 10%; }
+col.c2 { width: 10%; }
+col.c3 { width: 10%; }
+col.c4 { width: 13%; }
+col.c5 { width: 13%; }
+col.c6 { width: 13%; }
+col.c7 { width: 16%; }
+col.c8 { width: 12%; }
 
 th {
   background: #4a7c59;
   color: #fff;
   border: 1px solid #3a6a49;
-  padding: 10px 8px;
+  padding: 10px 6px;
   text-align: center;
   font-size: 13px;
   font-weight: 600;
+  vertical-align: middle;
+  line-height: 1.4;
+  height: 64px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 td {
   border: 1px solid #ccc;
-  padding: 10px 8px;
+  padding: 12px 8px;
   text-align: right;
-  font-size: 17px;
+  font-size: 18px;
   background: #fafff7;
 }
 
@@ -129,7 +147,7 @@ const duty = 1.15;
 
 // ===== FRESHNESS TRACKING =====
 let lastFetchTime = null;
-const STALE_LIMIT = 5 * 60 * 1000; // 5 minutes in ms
+const STALE_LIMIT = 5 * 60 * 1000;
 
 // ===== AUTO EXPIRY CALCULATOR =====
 function getExpiries() {
@@ -167,7 +185,9 @@ function monthDay(d) {
 }
 
 function toISO(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
 }
 
 // ===== HELPERS =====
@@ -202,22 +222,30 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
   <div class="card">
     <div class="card-title">${monthDay(expiryDate)} Contract (${formatExpiry(expiryDate)})</div>
     <table>
+      <colgroup>
+        <col class="c1">
+        <col class="c2">
+        <col class="c3">
+        <col class="c4">
+        <col class="c5">
+        <col class="c6">
+        <col class="c7">
+        <col class="c8">
+      </colgroup>
       <tr>
-        <th>Mcx Contract Expiry</th>
-        <th>Xau/Usd Spot Rate</th>
-        <th>Usd/Inr Spot Rate</th>
-        <th>Gold/Inr Spot Rate Without Duty</th>
-        <th>Gold/Inr Spot Rate With Duty</th>
-        <th>${monthDay(expiryDate)} Mcx Fwd Rate</th>
-        <th>Forward Premium/ (Discount)</th>
-        <th>Annualised Forward Premium/ (Discount) %</th>
-        <th>Xau/Usd Forward Rate</th>
+        <th>MCX Contract<br>Expiry</th>
+        <th>XAU/USD<br>Spot Rate</th>
+        <th>USD/INR<br>Spot Rate</th>
+        <th>Gold/INR<br>Spot Rate<br>With Duty</th>
+        <th>${monthDay(expiryDate)}<br>MCX Fwd<br>Rate</th>
+        <th>Forward<br>Premium/<br>(Discount)</th>
+        <th>Annualised<br>Forward Premium/<br>(Discount) %</th>
+        <th>XAU/USD<br>Forward<br>Rate</th>
       </tr>
       <tr>
         <td class="center">${formatExpiry(expiryDate)}</td>
         <td>${d0(xau)}</td>
         <td>${d2(inr)}</td>
-        <td>${d0(spotWithout)}</td>
         <td class="bold">${d0(spotWith)}</td>
         <td class="bold">${d0(mcxPerGram)}</td>
         <td>${Math.round(premium)}</td>
@@ -258,7 +286,10 @@ async function load() {
     } else {
       html += `<div class="card">
         <div class="card-title">${monthDay(next)} Contract (${formatExpiry(next)})</div>
-        <p style="color:#888; padding:10px;">Next expiry data not available yet. Will appear automatically when active.</p>
+        <p style="color:#888; padding:10px;">
+          Next expiry data not available yet.
+          Will appear automatically when contract becomes active.
+        </p>
       </div>`;
     }
 
@@ -287,13 +318,9 @@ async function load() {
 }
 
 // ===== SMART AUTO-REFRESH =====
-// Check every 30 seconds
-// If data is older than 5 minutes → force refresh
-
 setInterval(function() {
 
   if (!lastFetchTime) {
-    // Never fetched → fetch now
     load();
     return;
   }
@@ -301,7 +328,6 @@ setInterval(function() {
   const age = Date.now() - lastFetchTime;
 
   if (age > STALE_LIMIT) {
-    // Data is stale → refresh
     document.getElementById("badge").className = "badge stale";
     document.getElementById("badge").innerText = "⏳ Refreshing...";
     load();
