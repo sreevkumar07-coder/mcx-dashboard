@@ -11,15 +11,15 @@
 
 body {
   font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
-  padding: 8px;
+  padding: 6px;
   background: #f0f0f0;
   color: #222;
   -webkit-text-size-adjust: 100%;
 }
 
 h2 {
-  font-size: 16px;
-  margin-bottom: 8px;
+  font-size: 15px;
+  margin-bottom: 6px;
   text-align: center;
 }
 
@@ -27,15 +27,15 @@ h2 {
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 6px;
-  padding: 6px;
-  margin-bottom: 8px;
+  padding: 4px;
+  margin-bottom: 6px;
   width: 100%;
 }
 
 .card-title {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   color: #333;
   text-align: center;
 }
@@ -43,38 +43,35 @@ h2 {
 table {
   border-collapse: collapse;
   width: 100%;
-  table-layout: fixed;
 }
 
 th {
   background: #4a7c59;
   color: #fff;
   border: 1px solid #3a6a49;
-  padding: 4px 2px;
+  padding: 3px 1px;
   text-align: center;
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 700;
   vertical-align: middle;
   line-height: 1.2;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  white-space: nowrap;
 }
 
 td {
   border: 1px solid #ccc;
-  padding: 6px 2px;
+  padding: 4px 2px;
   text-align: center;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   background: #fafff7;
   line-height: 1.2;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  white-space: nowrap;
 }
 
 .footer {
-  margin-top: 6px;
-  font-size: 9px;
+  margin-top: 4px;
+  font-size: 8px;
   color: #999;
   text-align: center;
 }
@@ -144,6 +141,19 @@ const comma = new Intl.NumberFormat('en-IN');
 function d0(x) { return comma.format(Math.round(x)); }
 function d2(x) { return Number(x).toFixed(2); }
 
+// Format with brackets for negative
+function fmtPrem(x) {
+  const v = Math.round(x);
+  return v < 0 ? "(" + comma.format(Math.abs(v)) + ")" : comma.format(v);
+}
+
+function fmtPct(x) {
+  const v = Number(x).toFixed(2);
+  return Number(v) < 0
+    ? "(" + Math.abs(Number(v)).toFixed(2) + "%)"
+    : v + "%";
+}
+
 function daysTo(dateStr) {
   const today = new Date();
   const exp = new Date(dateStr);
@@ -168,13 +178,13 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
     <table>
       <tr>
         <th>MCX Expiry</th>
-        <th>XAU/ USD</th>
-        <th>USD/ INR</th>
-        <th>Gold/ INR Duty</th>
+        <th>XAU/USD</th>
+        <th>USD/INR</th>
+        <th>Gold/INR Duty</th>
         <th>${monthDay(expiryDate)} MCX Fwd</th>
-        <th>Fwd Prem/ (Disc)</th>
-        <th>Ann. Prem/ (Disc) %</th>
-        <th>XAU/ USD Fwd</th>
+        <th>Fwd Prem/(Disc)</th>
+        <th>Ann. Prem/(Disc)%</th>
+        <th>XAU/USD Fwd</th>
       </tr>
       <tr>
         <td>${formatExpiry(expiryDate)}</td>
@@ -182,8 +192,8 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
         <td>${d2(inr)}</td>
         <td>${d0(spotWith)}</td>
         <td>${d0(mcxPerGram)}</td>
-        <td>${Math.round(premium)}</td>
-        <td>${d2(annualised)}%</td>
+        <td>${fmtPrem(premium)}</td>
+        <td>${fmtPct(annualised)}</td>
         <td>${d0(xauFwd)}</td>
       </tr>
     </table>
@@ -214,7 +224,7 @@ async function load() {
     } else {
       html += `<div class="card">
         <div class="card-title">${monthDay(next)} Contract (${formatExpiry(next)})</div>
-        <p style="color:#888; padding:4px; font-size:11px; text-align:center;">
+        <p style="color:#888; padding:4px; font-size:10px; text-align:center;">
           Next expiry data not available yet.
         </p>
       </div>`;
@@ -225,8 +235,8 @@ async function load() {
 
     document.getElementById("footer").innerHTML =
       "Updated: " + new Date().toLocaleString() +
-      " &nbsp;|&nbsp; Near: " + formatExpiry(near) +
-      " &nbsp;|&nbsp; Next: " + formatExpiry(next);
+      " | Near: " + formatExpiry(near) +
+      " | Next: " + formatExpiry(next);
 
   } catch (e) {
     console.error(e);
