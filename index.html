@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=980">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>MCX Gold Forward Premium Dashboard</title>
 <style>
@@ -11,79 +11,83 @@
 
 body {
   font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
-  padding: 12px;
+  padding: 6px;
   background: #f0f0f0;
   color: #222;
+  -webkit-text-size-adjust: 100%;
 }
 
 h2 {
-  font-size: 18px;
-  margin-bottom: 10px;
+  font-size: 15px;
+  margin-bottom: 6px;
+  text-align: center;
 }
 
 .card {
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 6px;
-  padding: 8px;
-  margin-bottom: 10px;
-  width: fit-content;
+  padding: 4px;
+  margin-bottom: 8px;
+  width: 100%;
 }
 
 .card-title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   color: #333;
+  text-align: center;
 }
 
 table {
   border-collapse: collapse;
-  white-space: nowrap;
+  width: 100%;
+  table-layout: fixed;
 }
 
 th {
   background: #4a7c59;
   color: #fff;
   border: 1px solid #3a6a49;
-  padding: 4px 6px;
+  padding: 3px 2px;
   text-align: center;
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 700;
   vertical-align: middle;
-  line-height: 1.25;
-}
-
-th span {
-  display: block;
-  white-space: nowrap;
+  line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 td {
   border: 1px solid #ccc;
-  padding: 5px 6px;
+  padding: 4px 2px;
   text-align: right;
-  font-size: 14px;
+  font-size: 11px;
+  font-weight: bold;
   background: #fafff7;
-  line-height: 1.25;
-  white-space: nowrap;
+  line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 td.center { text-align: center; }
-td.bold { font-weight: bold; }
 
 .footer {
-  margin-top: 6px;
-  font-size: 10px;
+  margin-top: 4px;
+  font-size: 9px;
   color: #999;
+  text-align: center;
   display: flex;
-  gap: 10px;
+  justify-content: center;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .footer span {
   background: #eee;
-  padding: 2px 6px;
+  padding: 1px 4px;
   border-radius: 4px;
 }
 
@@ -179,24 +183,24 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
     <div class="card-title">${monthDay(expiryDate)} Contract (${formatExpiry(expiryDate)})</div>
     <table>
       <tr>
-        <th><span>MCX</span><span>Contract</span><span>Expiry</span></th>
-        <th><span>XAU/USD</span><span>Spot Rate</span></th>
-        <th><span>USD/INR</span><span>Spot Rate</span></th>
-        <th><span>Gold/INR</span><span>Spot Rate</span><span>With Duty</span></th>
-        <th><span>${monthDay(expiryDate)}</span><span>MCX Fwd</span><span>Rate</span></th>
-        <th><span>Forward</span><span>Premium/</span><span>(Discount)</span></th>
-        <th><span>Annualised Fwd</span><span>Premium/</span><span>(Discount) %</span></th>
-        <th><span>XAU/USD</span><span>Forward</span><span>Rate</span></th>
+        <th>MCX Expiry</th>
+        <th>XAU/ USD</th>
+        <th>USD/ INR</th>
+        <th>Gold/ INR With Duty</th>
+        <th>${monthDay(expiryDate)} MCX Fwd</th>
+        <th>Fwd Premium/ (Disc.)</th>
+        <th>Ann. Fwd Prem/ (Disc.) %</th>
+        <th>XAU/ USD Fwd</th>
       </tr>
       <tr>
         <td class="center">${formatExpiry(expiryDate)}</td>
         <td>${d0(xau)}</td>
         <td>${d2(inr)}</td>
-        <td class="bold">${d0(spotWith)}</td>
-        <td class="bold">${d0(mcxPerGram)}</td>
+        <td>${d0(spotWith)}</td>
+        <td>${d0(mcxPerGram)}</td>
         <td>${Math.round(premium)}</td>
-        <td class="bold">${d2(annualised)}%</td>
-        <td class="bold">${d0(xauFwd)}</td>
+        <td>${d2(annualised)}%</td>
+        <td>${d0(xauFwd)}</td>
       </tr>
     </table>
   </div>
@@ -226,7 +230,7 @@ async function load() {
     } else {
       html += `<div class="card">
         <div class="card-title">${monthDay(next)} Contract (${formatExpiry(next)})</div>
-        <p style="color:#888; padding:4px; font-size:12px;">
+        <p style="color:#888; padding:4px; font-size:10px; text-align:center;">
           Next expiry data not available yet.
         </p>
       </div>`;
@@ -250,24 +254,19 @@ async function load() {
   }
 }
 
-// ===== AUTO REFRESH (5 min stale check) =====
+// ===== AUTO REFRESH (5 min stale) =====
 setInterval(function() {
   if (!lastFetchTime || (Date.now() - lastFetchTime) > STALE_LIMIT) {
     load();
   }
 }, 30000);
 
-// ===== REFRESH WHEN APP COMES BACK TO FOREGROUND =====
+// ===== REFRESH ON APP OPEN / SWITCH BACK =====
 document.addEventListener("visibilitychange", function() {
-  if (document.visibilityState === "visible") {
-    load();
-  }
+  if (document.visibilityState === "visible") load();
 });
 
-// ===== REFRESH ON WINDOW FOCUS (backup) =====
-window.addEventListener("focus", function() {
-  load();
-});
+window.addEventListener("focus", function() { load(); });
 
 // ===== INITIAL LOAD =====
 load();
