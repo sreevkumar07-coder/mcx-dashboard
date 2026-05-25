@@ -2,154 +2,167 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Gold Forward Dashboard</title>
-
+<title>MCX Gold Forward Dashboard</title>
 <style>
-body {
-  font-family: Arial;
-  padding: 20px;
-}
+body { font-family: Arial; padding: 20px; }
+h2 { margin-bottom: 10px; }
 
 table {
   border-collapse: collapse;
-  margin-top: 20px;
+  margin-bottom: 25px;
   width: 100%;
+  max-width: 1100px;
 }
 
 th {
   background: #a9bf9c;
-  border: 1px solid black;
-  padding: 10px;
+  border: 2px solid black;
+  padding: 10px 8px;
   text-align: center;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 td {
-  border: 1px solid black;
-  padding: 8px;
+  border: 2px solid black;
+  padding: 10px 8px;
   text-align: right;
   font-size: 18px;
 }
 
-.center {
-  text-align: center;
-}
+td.center { text-align: center; }
+td.bold { font-weight: bold; }
 
-.bold {
-  font-weight: bold;
-}
-
-.section {
-  margin-bottom: 25px;
-}
+.status { margin-bottom: 10px; font-size: 14px; }
+.meta { margin-top: 10px; font-size: 12px; color: gray; }
 </style>
 </head>
 
 <body>
 
-<h2>Gold Forward Dashboard</h2>
+<h2>MCX Gold Forward Premium Dashboard</h2>
+
+<div class="status" id="status">Loading...</div>
 
 <div id="tables"></div>
 
+<div class="meta" id="time"></div>
+
 <script>
 
-const URL = "https://mcxdashboard.sreekumar.workers.dev";
+const WORKER_URL = "https://mcxdashboard.sreekumar.workers.dev";
 
-// constants
+// ===== CONSTANTS =====
 const conv = 31.99;
 const duty = 1.15;
 
-// ===== FORMAT =====
+// ===== EXPIRY DATES =====
+const junExpiry = "2026-06-05";
+const augExpiry = "2026-08-05";
+
+// ===== HELPERS =====
 const comma = new Intl.NumberFormat('en-IN');
 
 function d0(x) { return comma.format(Math.round(x)); }
 function d2(x) { return Number(x).toFixed(2); }
 
+function daysTo(dateStr) {
+  const today = new Date();
+  const exp = new Date(dateStr);
+  const diff = (exp - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000;
+  return Math.max(1, Math.round(diff));
+}
+
+// ===== BUILD TABLE =====
+function buildTable(label, expiry, xau, inr, mcxFwdPer10g) {
+
+  const spotWithout = xau * inr * conv / 1000;
+  const spotWith = spotWithout * duty;
+
+  // MCX is per 10g, convert to per gram
+  const mcxPerGram = mcxFwdPer10g / 10;
+
+  const premium = mcxPerGram - spotWith;
+  const days = daysTo(expiry);
+  const annualised = (premium / spotWith) / days * 365 * 100;
+  const xauFwd = mcxPerGram / duty / inr / conv * 1000;
+
+  const expiryLabel = new Date(expiry).toLocaleDateString('en-GB', {
+    day: '2-digit', month: 'short', year: '2-digit'
+  });
+
+  const monthLabel = new Date(expiry).toLocaleDateString('en-US', {
+    month: 'short', day: '2-digit'
+  });
+
+  return `
+  <table>
+    <tr>
+      <th>MCX CONTRACT EXPIRY</th>
+      <th>XAU/USD SPOT RATE</th>
+      <th>USD/INR SPOT RATE</th>
+      <th>GOLD/INR SPOT RATE WITHOUT DUTY</th>
+      <th>GOLD/INR SPOT RATE WITH DUTY</th>
+      <th>${monthLabel} MCX FWD RATE</th>
+      <th>FORWARD PREMIUM/ (DISCOUNT)</th>
+      <th>ANNUALISED FORWARD PREMIUM/ (DISCOUNT) %</th>
+      <th>XAU/USD FORWARD RATE</th>
+    </tr>
+    <tr>
+      <td class="center">${expiryLabel}</td>
+      <td>${d0(xau)}</td>
+      <td>${d2(inr)}</td>
+      <td>${d0(spotWithout)}</td>
+      <td class="bold">${d0(spotWith)}</td>
+      <td class="bold">${d0(mcxPerGram)}</td>
+      <td>${Math.round(premium)}</td>
+      <td class="bold">${d2(annualised)}%</td>
+      <td class="bold">${d0(xauFwd)}</td>
+    </tr>
+  </table>
+  `;
+}
+
 // ===== MAIN =====
 async function load() {
+  try {
+    document.getElementById("status").innerText = "Fetching live data...";
 
-  const res = await fetch(URL);
-  const data = await res.json();
+    const res = await fetch(WORKER_URL, { cache: "no-store" });
+    const data = await res.json();
 
-  const xau = Number(data.xau);
-  const inr = Number(data.inr);
+    if (!data.ok) throw new Error("API returned not ok");
 
-  // ===== BASE CALC =====
-  const usdPerGram = xau / conv;
-  const spot = usdPerGram * inr;
-  const spotIndia = spot * duty;
+    const xau = Number(data.xau);
+    const inr = Number(data.inr);
 
-  // ===== STATIC MCX VALUES (YOUR SAMPLE) =====
-  // You can later make dynamic if needed
-  const junFwd = 15943;
-  const augFwd = 16249;
+    let html = "";
 
-  // ===== CALCULATIONS =====
-  function calcRow(expiry, fwd) {
+    // Jun table
+    if (data.mcx_jun) {
+      html += buildTable("Jun", junExpiry, xau, inr, data.mcx_jun);
+    }
 
-    const premium = fwd - spotIndia;
+    // Aug table
+    if (data.mcx_aug) {
+      html += buildTable("Aug", augExpiry, xau, inr, data.mcx_aug);
+    } else {
+      html += `<p style="color:gray;">⚠️ Aug contract data not available currently</p>`;
+    }
 
-    const annual =
-      (premium / spotIndia) *
-      (365 / daysTo(expiry)) * 100;
+    document.getElementById("tables").innerHTML = html;
+    document.getElementById("status").innerText = "Live ✅";
+    document.getElementById("time").innerText = "Updated: " + new Date().toLocaleString();
 
-    const xauFwd =
-      (fwd / 10 / inr) * conv;
-
-    return `
-    <div class="section">
-
-    <table>
-
-      <tr>
-        <th>MCX CONTRACT EXPIRY</th>
-        <th>XAU/USD SPOT RATE</th>
-        <th>USD/INR SPOT RATE</th>
-        <th>GOLD/INR SPOT RATE WITHOUT DUTY</th>
-        <th>GOLD/INR SPOT RATE WITH DUTY</th>
-        <th>${label(expiry)} MCX FWD RATE</th>
-        <th>FORWARD PREMIUM/(DISCOUNT)</th>
-        <th>ANNUALISED FORWARD PREMIUM/(DISCOUNT) %</th>
-        <th>XAU/USD FORWARD RATE</th>
-      </tr>
-
-      <tr>
-        <td class="center">${expiry}</td>
-        <td>${d0(xau)}</td>
-        <td>${d2(inr)}</td>
-        <td>${d0(spot)}</td>
-        <td class="bold">${d0(spotIndia)}</td>
-        <td class="bold">${d0(fwd)}</td>
-        <td>${premium >= 0 ? premium : premium}</td>
-        <td class="bold">${d2(annual)}%</td>
-        <td class="bold">${Math.round(xauFwd)}</td>
-      </tr>
-
-    </table>
-
-    </div>`;
+  } catch (e) {
+    console.error(e);
+    document.getElementById("status").innerText = "❌ Data error";
   }
-
-  document.getElementById("tables").innerHTML =
-    calcRow("05-Jun-26", junFwd) +
-    calcRow("05-Aug-26", augFwd);
-}
-
-// ===== HELPERS =====
-function daysTo(dateStr) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  return (d - now) / 86400000;
-}
-
-function label(date) {
-  const d = new Date(date);
-  return d.toLocaleString('en-US', { month: 'short', day: '2-digit' });
 }
 
 // run
 load();
-
-setInterval(load, 60000);
+setInterval(load, 30000);
 
 </script>
 
