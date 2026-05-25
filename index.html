@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>MCX Gold Forward Premium Dashboard</title>
 <style>
 
@@ -13,28 +13,28 @@
 body {
   font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
   padding: 0;
-  background: #1a0a0c;
-  color: #fff;
+  background: #FFF8EE;
+  color: #333;
   -webkit-text-size-adjust: 100%;
 }
 
 .header {
-  background: linear-gradient(135deg, #721C24, #4a1018);
+  background: linear-gradient(135deg, #E72126, #C41A1F);
   padding: 12px 10px 8px;
   text-align: center;
-  border-bottom: 3px solid #ffc028;
+  border-bottom: 3px solid #FFD406;
 }
 
 .header h2 {
   font-size: 15px;
-  color: #ffc028;
+  color: #FFD406;
   letter-spacing: 0.5px;
   margin: 0;
 }
 
 .header .sub {
   font-size: 9px;
-  color: #ddd;
+  color: #ffe0e0;
   margin-top: 2px;
 }
 
@@ -43,20 +43,21 @@ body {
 }
 
 .card {
-  background: linear-gradient(180deg, #2a1015, #1a0a0c);
-  border: 1px solid #ffc028;
+  background: #fff;
+  border: 1px solid #CB8B1E;
   border-radius: 8px;
   padding: 6px;
   margin-bottom: 8px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  box-shadow: 0 1px 4px rgba(203,139,30,0.15);
 }
 
 .card-title {
   font-size: 12px;
   font-weight: bold;
   margin-bottom: 4px;
-  color: #ffc028;
+  color: #C41A1F;
   text-align: center;
   letter-spacing: 0.3px;
 }
@@ -67,9 +68,9 @@ table {
 }
 
 th {
-  background: #721C24;
-  color: #ffc028;
-  border: 1px solid #ffc028;
+  background: linear-gradient(180deg, #CB8B1E, #B07818);
+  color: #fff;
+  border: 1px solid #B07818;
   padding: 4px 8px;
   text-align: center;
   font-size: 10px;
@@ -79,24 +80,24 @@ th {
 }
 
 td {
-  border: 1px solid #5a3035;
+  border: 1px solid #e0c88a;
   padding: 6px 8px;
   text-align: center;
   font-size: 14px;
   font-weight: bold;
-  background: #2a1015;
-  color: #fff;
+  background: #FFFDF5;
+  color: #333;
   line-height: 1.2;
   white-space: nowrap;
 }
 
 .footer-bar {
-  background: #721C24;
+  background: linear-gradient(135deg, #E72126, #C41A1F);
   padding: 6px 10px;
   font-size: 9px;
-  color: #ccc;
+  color: #ffe0e0;
   text-align: center;
-  border-top: 2px solid #ffc028;
+  border-top: 2px solid #FFD406;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -158,29 +159,19 @@ function getExpiries() {
   }
   upcoming.sort(function(a, b) { return a.date - b.date; });
 
-  return {
-    near: upcoming[0],
-    next: upcoming[1],
-    far: upcoming[2]
-  };
+  return { near: upcoming[0], next: upcoming[1], far: upcoming[2] };
 }
 
 function formatExpiry(d) {
-  return d.toLocaleDateString('en-IN', {
-    day: '2-digit', month: 'short', year: '2-digit'
-  });
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
 function monthDay(d) {
-  return d.toLocaleDateString('en-US', {
-    month: 'short', day: '2-digit'
-  });
+  return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
 }
 
 function toISO(d) {
-  return d.getFullYear() + '-' +
-    String(d.getMonth()+1).padStart(2,'0') + '-' +
-    String(d.getDate()).padStart(2,'0');
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
 var comma = new Intl.NumberFormat('en-IN');
@@ -194,21 +185,16 @@ function fmtPrem(x) {
 
 function fmtPct(x) {
   var v = Number(x).toFixed(2);
-  return Number(v) < 0
-    ? "(" + Math.abs(Number(v)).toFixed(2) + "%)"
-    : v + "%";
+  return Number(v) < 0 ? "(" + Math.abs(Number(v)).toFixed(2) + "%)" : v + "%";
 }
 
 function daysTo(dateStr) {
   var today = new Date();
   var exp = new Date(dateStr);
-  return Math.max(1, Math.round(
-    (exp - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000
-  ));
+  return Math.max(1, Math.round((exp - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000));
 }
 
 function buildTable(expiryDate, xau, inr, mcxPer10g) {
-
   var expISO = toISO(expiryDate);
   var spotWith = xau * inr * conv / 1000 * duty;
   var mcxPerGram = mcxPer10g / 10;
@@ -219,8 +205,7 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
 
   return '<div class="card">' +
     '<div class="card-title">' + monthDay(expiryDate) + ' Contract (' + formatExpiry(expiryDate) + ')</div>' +
-    '<table>' +
-    '<tr>' +
+    '<table><tr>' +
       '<th>MCX<br>Expiry</th>' +
       '<th>XAU/USD<br>Spot</th>' +
       '<th>USD/INR<br>Spot</th>' +
@@ -229,8 +214,7 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
       '<th>Forward<br>Premium/<br>(Discount)</th>' +
       '<th>Annualised<br>Fwd Premium/<br>(Discount) %</th>' +
       '<th>XAU/USD<br>Forward<br>Rate</th>' +
-    '</tr>' +
-    '<tr>' +
+    '</tr><tr>' +
       '<td>' + formatExpiry(expiryDate) + '</td>' +
       '<td>' + d0(xau) + '</td>' +
       '<td>' + d2(inr) + '</td>' +
@@ -239,39 +223,28 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
       '<td>' + fmtPrem(premium) + '</td>' +
       '<td>' + fmtPct(annualised) + '</td>' +
       '<td>' + d0(xauFwd) + '</td>' +
-    '</tr>' +
-    '</table>' +
-    '</div>';
+    '</tr></table></div>';
 }
 
 function buildBoardRate(gold24k, gold22k) {
   return '<div class="card">' +
     '<div class="card-title">Board Rate (Kerala)</div>' +
-    '<table>' +
-    '<tr>' +
+    '<table><tr>' +
       '<th>24K Gold / g</th>' +
       '<th>22K Gold / g</th>' +
-    '</tr>' +
-    '<tr>' +
-      '<td>' + comma.format(gold24k) + '</td>' +
-      '<td>' + comma.format(gold22k) + '</td>' +
-    '</tr>' +
-    '</table>' +
-    '</div>';
+    '</tr><tr>' +
+      '<td>\u20B9 ' + comma.format(gold24k) + '</td>' +
+      '<td>\u20B9 ' + comma.format(gold22k) + '</td>' +
+    '</tr></table></div>';
 }
 
 function load() {
-
   var exp = getExpiries();
   var nearDate = exp.near.date;
   var nextDate = exp.next.date;
   var farDate = exp.far.date;
 
-  var nearCode = MN[exp.near.m];
-  var nextCode = MN[exp.next.m];
-  var farCode = MN[exp.far.m];
-
-  var workerURL = WORKER_BASE + "?near=" + nearCode + "&next=" + nextCode + "&far=" + farCode;
+  var workerURL = WORKER_BASE + "?near=" + MN[exp.near.m] + "&next=" + MN[exp.next.m] + "&far=" + MN[exp.far.m];
 
   fetch(workerURL, { cache: "no-store" })
     .then(function(res) { return res.json(); })
@@ -288,40 +261,32 @@ function load() {
 
       var html = "";
 
-      if (nearPrice) {
-        html += buildTable(nearDate, xau, inr, nearPrice);
-      }
+      if (nearPrice) { html += buildTable(nearDate, xau, inr, nearPrice); }
 
       if (nextPrice) {
         html += buildTable(nextDate, xau, inr, nextPrice);
       } else {
         html += '<div class="card"><div class="card-title">' + monthDay(nextDate) + ' Contract (' + formatExpiry(nextDate) + ')</div>' +
-          '<p style="color:#ccc;padding:6px;font-size:11px;text-align:center;">Next expiry data not available yet.</p></div>';
+          '<p style="color:#999;padding:6px;font-size:11px;text-align:center;">Next expiry data not available yet.</p></div>';
       }
 
       if (farPrice) {
         html += buildTable(farDate, xau, inr, farPrice);
       } else {
         html += '<div class="card"><div class="card-title">' + monthDay(farDate) + ' Contract (' + formatExpiry(farDate) + ')</div>' +
-          '<p style="color:#ccc;padding:6px;font-size:11px;text-align:center;">Far expiry data not available yet.</p></div>';
+          '<p style="color:#999;padding:6px;font-size:11px;text-align:center;">Far expiry data not available yet.</p></div>';
       }
 
-      // Board Rate table
       if (data.gold_24k && data.gold_22k) {
         html += buildBoardRate(data.gold_24k, data.gold_22k);
       }
 
       document.getElementById("tables").innerHTML = html;
       lastFetchTime = Date.now();
-
-      document.getElementById("updated").innerHTML =
-        "Updated: " + new Date().toLocaleString();
-
+      document.getElementById("updated").innerHTML = "Updated: " + new Date().toLocaleString();
       document.getElementById("footer").innerHTML =
-        "Near: " + formatExpiry(nearDate) +
-        " &nbsp;|&nbsp; Next: " + formatExpiry(nextDate) +
-        " &nbsp;|&nbsp; Far: " + formatExpiry(farDate) +
-        " &nbsp;|&nbsp; Auto-rolling";
+        "Near: " + formatExpiry(nearDate) + " &nbsp;|&nbsp; Next: " + formatExpiry(nextDate) +
+        " &nbsp;|&nbsp; Far: " + formatExpiry(farDate) + " &nbsp;|&nbsp; Auto-rolling";
     })
     .catch(function(e) {
       console.error(e);
