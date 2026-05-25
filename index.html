@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MCX Gold Dashboard</title>
+
+<style>
+body { font-family: Arial; padding: 20px; }
+h2 { margin-bottom: 5px; }
+table { border-collapse: collapse; margin-top: 10px; width: 100%; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: right; }
+th { background: #f0f0f0; }
+.meta { margin-top: 10px; font-size: 12px; color: gray; }
+</style>
+</head>
+
+<body>
+
+<h2>MCX Gold Forward Premium Dashboard</h2>
+
+<div id="status">Loading...</div>
+
+<div id="tables"></div>
+
+<div class="meta" id="time"></div>
+
+<script>
+
+// ===== YOUR CONSTANTS =====
+const conv = 31.99;
+const factor = 1.15;
+
+// ===== DAYS TO EXPIRY =====
+function daysTo(date) {
+    const today = new Date();
+    const exp = new Date(date);
+    return Math.max(1, Math.round((exp - today) / (1000*60*60*24)));
+}
+
+// ===== CALC FUNCTION =====
+function calc(xau, inr, mcx, expiry) {
+
+    const spot = xau * inr * conv / 1000 * factor;
+    const premium = mcx - spot;
+    const dte = daysTo(expiry);
+
+    const annual = (premium / spot) / dte * 365 * 100;
+    const xauFwd = mcx / factor / inr / conv * 1000;
+
+    return {
+        spot: Math.round(spot),
+        premium: Math.round(premium),
+        annual: annual.toFixed(2),
+        xauFwd: Math.round(xauFwd)
+    };
+}
+
+// ===== FETCH MCX =====
+async function getMCX() {
+    const url = "https://api.allorigins.win/raw?url=https://mcxlive.in/";
+    const html = await fetch(url).then(r => r.text());
+
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const rows = doc.querySelectorAll("table tr");
+
+    let jun = null, aug = null;
+
+    rows.forEach(r => {
+        const t = r.innerText;
+
+        if (t.includes("GOLD 05-Jun")) {
+            jun = parseFloat(t.split(/\s+/)[2]);
+        }
+        if (t.includes("GOLD 05-Aug")) {
+            aug = parseFloat(t.split(/\s+/)[2]);
+        }
+    });
+
+    return { jun, aug };
+}
+
+// ===== FETCH USDINR =====
+async function getINR() {
+    const data = await fetch("https://latest.currency-api.pages.dev/v1/currencies/usd.json")
+        .then(r => r.json());
+    return data.usd.inr;
+}
+
+// ===== FETCH XAU =====
+async function getXAU() {
+    const data = await fetch("https://gold-api.com/price/XAU")
+        .then(r => r.json());
+    return data.price;
+}
+
+// ===== MAIN =====
+async function load() {
+    try {
+        document.getElementById("status").innerText = "Loading live data...";
+
+        const mcx = await getMCX();
+        const inr = await getINR();
+        const xau = await getXAU();
+
+        if (!mcx.jun || !mcx.aug) throw "MCX data failed";
+
+        const near = calc(xau, inr, mcx.jun, "2026-06-05");
+        const next = calc(xau, inr, mcx.aug, "2026-08-05");
+
+        document.getElementById("tables").innerHTML = `
+        
+        <h3>June Expiry</h3>
+        <table>
+        <tr><th>XAU/USD</th><th>USD/INR</th><th>Spot</th><th>MCX</th><th>Premium</th><th>Annual %</th><th>XAU Fwd</th></tr>
+        <tr>
+            <td>${xau}</td>
+            <td>${inr.toFixed(2)}</td>
+            <td>${near.spot}</td>
+            <td>${mcx.jun}</td>
+            <td>${near.premium}</td>
+            <td>${near.annual}%</td>
+            <td>${near.xauFwd}</td>
+        </tr>
+        </table>
+
+        <h3>August Expiry</h3>
+        <table>
+        <tr><th>XAU/USD</th><th>USD/INR</th><th>Spot</th><th>MCX</th><th>Premium</th><th>Annual %</th><th>XAU Fwd</th></tr>
+        <tr>
+            <td>${xau}</td>
+            <td>${inr.toFixed(2)}</td>
+            <td>${next.spot}</td>
+            <td>${mcx.aug}</td>
+            <td>${next.premium}</td>
+            <td>${next.annual}%</td>
+            <td>${next.xauFwd}</td>
+        </tr>
+        </table>
+        `;
+
+        document.getElementById("status").innerText = "Live ✅";
+
+        document.getElementById("time").innerText =
+            "Last updated: " + new Date().toLocaleString();
+
+    } catch (e) {
+        document.getElementById("status").innerText =
+            "⚠️ Data fetch error (site may be down)";
+    }
+}
+
+// load + auto refresh
+load();
+setInterval(load, 60000);
+
+</script>
+
+</body>
+</html>
