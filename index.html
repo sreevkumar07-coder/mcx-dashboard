@@ -9,63 +9,37 @@
 
 body {
   font-family: 'Segoe UI', Arial, sans-serif;
-  padding: 24px;
+  padding: 16px;
   background: #f5f5f5;
   color: #222;
 }
 
 h2 {
-  font-size: 22px;
-  margin-bottom: 6px;
+  font-size: 20px;
+  margin-bottom: 12px;
 }
-
-.subtitle {
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 16px;
-}
-
-.status-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  font-size: 14px;
-}
-
-.badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.badge.live { background: #d4edda; color: #155724; }
-.badge.stale { background: #fff3cd; color: #856404; }
-.badge.error { background: #f8d7da; color: #721c24; }
 
 .card {
   background: #fff;
   border: 1px solid #ddd;
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 18px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   overflow-x: auto;
 }
 
 .card-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: #333;
 }
 
 table {
   border-collapse: collapse;
   width: 100%;
-  min-width: 880px;
+  min-width: 860px;
   table-layout: fixed;
 }
 
@@ -82,22 +56,21 @@ th {
   background: #4a7c59;
   color: #fff;
   border: 1px solid #3a6a49;
-  padding: 6px 5px;
+  padding: 5px 4px;
   text-align: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   vertical-align: middle;
-  line-height: 1.35;
-  height: 58px;
+  line-height: 1.3;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 
 td {
   border: 1px solid #ccc;
-  padding: 6px 6px;
+  padding: 5px 5px;
   text-align: right;
-  font-size: 15px;
+  font-size: 14px;
   background: #fafff7;
 }
 
@@ -105,18 +78,18 @@ td.center { text-align: center; }
 td.bold { font-weight: bold; }
 
 .footer {
-  margin-top: 10px;
-  font-size: 12px;
-  color: #888;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #999;
   display: flex;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .footer span {
   background: #eee;
-  padding: 3px 8px;
-  border-radius: 8px;
+  padding: 2px 7px;
+  border-radius: 6px;
 }
 
 </style>
@@ -125,12 +98,6 @@ td.bold { font-weight: bold; }
 <body>
 
 <h2>MCX Gold Forward Premium Dashboard</h2>
-<div class="subtitle">Live rates from dealer feed &bull; Auto-refreshing</div>
-
-<div class="status-bar">
-  <span id="status">Loading...</span>
-  <span id="badge" class="badge"></span>
-</div>
 
 <div id="tables"></div>
 
@@ -253,9 +220,6 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
 
 async function load() {
   try {
-    document.getElementById("status").innerText = "Fetching live data...";
-    document.getElementById("badge").className = "badge";
-    document.getElementById("badge").innerText = "";
 
     const res = await fetch(WORKER_URL, { cache: "no-store" });
     const data = await res.json();
@@ -277,9 +241,8 @@ async function load() {
     } else {
       html += `<div class="card">
         <div class="card-title">${monthDay(next)} Contract (${formatExpiry(next)})</div>
-        <p style="color:#888; padding:10px;">
+        <p style="color:#888; padding:6px; font-size:13px;">
           Next expiry data not available yet.
-          Will appear automatically when contract becomes active.
         </p>
       </div>`;
     }
@@ -287,34 +250,23 @@ async function load() {
     document.getElementById("tables").innerHTML = html;
 
     lastFetchTime = Date.now();
-    document.getElementById("status").innerText = "Live";
-    document.getElementById("badge").className = "badge live";
-    document.getElementById("badge").innerText = "✅ Live";
 
     document.getElementById("footer").innerHTML = `
       <span>Updated: ${new Date().toLocaleString()}</span>
       <span>Near: ${formatExpiry(near)}</span>
       <span>Next: ${formatExpiry(next)}</span>
-      <span>Auto-rolling ✅</span>
     `;
 
   } catch (e) {
     console.error(e);
-    document.getElementById("status").innerText = "Error";
-    document.getElementById("badge").className = "badge error";
-    document.getElementById("badge").innerText = "❌ Data error";
+    document.getElementById("footer").innerHTML = `
+      <span style="color:#c00;">❌ Data error</span>
+    `;
   }
 }
 
 setInterval(function() {
-  if (!lastFetchTime) {
-    load();
-    return;
-  }
-  const age = Date.now() - lastFetchTime;
-  if (age > STALE_LIMIT) {
-    document.getElementById("badge").className = "badge stale";
-    document.getElementById("badge").innerText = "⏳ Refreshing...";
+  if (!lastFetchTime || (Date.now() - lastFetchTime) > STALE_LIMIT) {
     load();
   }
 }, 30000);
