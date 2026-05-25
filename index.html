@@ -2,142 +2,100 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Gold Analytics Dashboard</title>
+<title>Gold Realtime Dashboard</title>
 
 <style>
 body { font-family: Arial; padding: 20px; }
-h2 { margin-bottom: 5px; }
+h2 { margin-bottom: 10px; }
 
-table {
-  border-collapse: collapse;
-  margin-top: 10px;
-  width: 100%;
-}
-
-th, td {
+.box {
   border: 1px solid #ccc;
-  padding: 8px;
-  text-align: right;
+  padding: 15px;
+  width: 320px;
+  background: #f9f9f9;
 }
 
-th {
-  background: #f2f2f2;
-}
-
-.meta {
-  margin-top: 12px;
-  font-size: 12px;
-  color: gray;
-}
-
-.status {
-  margin-bottom: 10px;
-}
+.status { margin-bottom: 10px; }
+.meta { margin-top: 10px; font-size: 12px; color: gray; }
 </style>
-
 </head>
 
 <body>
 
-<h2>Gold Analytics Dashboard</h2>
+<h2>Gold Realtime Dashboard</h2>
 
 <div class="status" id="status">Loading...</div>
 
-<div id="table"></div>
+<div class="box" id="output"></div>
 
 <div class="meta" id="time"></div>
 
 <script>
 
-// ===== CONSTANTS =====
-const conv = 31.99;     // grams per oz
-const premium = 1.15;   // India premium factor
+const WORKER_URL = "https://YOUR-WORKER.workers.dev";
 
-// ===== FETCH USD DATA =====
-async function getData() {
-  const res = await fetch(
-    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
-  );
-  const data = await res.json();
+// conversion constants
+const conv = 31.99;
+const factor = 1.15;
 
-  const usdToInr = data.usd.inr;
-
-  // ✅ Better XAU using inversion
-  const usdToXau = data.usd.xau;
-  const xauUsd = 1 / usdToXau;
-
-  return { usdToInr, xauUsd };
+// format timestamp
+function formatTime(ts) {
+  return new Date(ts * 1000).toLocaleString();
 }
 
-// ===== MAIN =====
 async function load() {
-
   try {
 
     document.getElementById("status").innerText = "Fetching live data...";
 
-    const data = await getData();
+    const res = await fetch(WORKER_URL);
+    const data = await res.json();
 
-    const xau = data.xauUsd;
-    const inr = data.usdToInr;
+    const xau = data.xau;
+    const inr = data.inr;
+    const fxTime = formatTime(data.inr_market_time_unix);
 
-    // ===== CORE CALCS =====
-
-    // USD per gram
+    // ===== CALCULATION =====
     const usdPerGram = xau / conv;
-
-    // INR per gram (spot)
     const inrPerGram = usdPerGram * inr;
+    const indiaPrice = inrPerGram * factor;
 
-    // INR per gram (with premium)
-    const indiaPrice = inrPerGram * premium;
+    // freshness check
+    const age = Math.floor((Date.now()/1000 - data.inr_market_time_unix)/60);
 
-    // cross-check (direct)
-    const direct = (xau * inr) / conv;
+    let freshness =
+      age < 2 ? "🟢 Live" :
+      age < 5 ? "🟡 Slight delay" :
+      "🔴 Delayed";
 
-    // ===== DISPLAY =====
+    document.getElementById("output").innerHTML = `
+      <b>XAU/USD:</b> ${xau.toFixed(2)}<br><br>
 
-    document.getElementById("table").innerHTML = `
-    
-    <table>
-    <tr>
-      <th colspan="2">Market Inputs</th>
-      <th colspan="2">Derived Values</th>
-    </tr>
+      <b>USD/INR:</b> ${inr.toFixed(4)}<br>
+      <small>Last FX update: ${fxTime}</small><br>
+      <small>Status: ${freshness}</small><br><br>
 
-    <tr>
-      <td>XAU/USD</td><td>${xau.toFixed(2)}</td>
-      <td>USD / gram</td><td>${usdPerGram.toFixed(2)}</td>
-    </tr>
-
-    <tr>
-      <td>USD/INR</td><td>${inr.toFixed(2)}</td>
-      <td>₹ / gram (spot)</td><td>${Math.round(inrPerGram)}</td>
-    </tr>
-
-    <tr>
-      <td>Cross Check</td><td>${Math.round(direct)}</td>
-      <td>₹ / gram (India adj)</td><td>${Math.round(indiaPrice)}</td>
-    </tr>
-
-    </table>
+      <b>₹/gram (spot):</b> ${Math.round(inrPerGram)}<br>
+      <b>₹/gram (India adj):</b> ${Math.round(indiaPrice)}
     `;
 
     document.getElementById("status").innerText = "Live ✅";
 
     document.getElementById("time").innerText =
-      "Last updated: " + new Date().toLocaleString();
+      "Updated: " + new Date().toLocaleString();
 
   } catch (e) {
 
     document.getElementById("status").innerText =
-      "❌ Data error (API issue)";
+      "❌ API Error";
 
   }
 }
 
 // run
 load();
+
+// refresh every 60 sec
 setInterval(load, 60000);
 
 </script>
