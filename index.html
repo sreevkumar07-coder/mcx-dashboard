@@ -23,9 +23,9 @@ h2 {
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 6px;
-  padding: 8px;
+  padding: 6px;
   margin-bottom: 10px;
-  overflow-x: auto;
+  display: inline-block;
 }
 
 .card-title {
@@ -37,41 +37,34 @@ h2 {
 
 table {
   border-collapse: collapse;
-  width: 100%;
-  min-width: 820px;
-  table-layout: fixed;
 }
-
-col.c1 { width: 10%; }
-col.c2 { width: 10%; }
-col.c3 { width: 10%; }
-col.c4 { width: 13%; }
-col.c5 { width: 12%; }
-col.c6 { width: 12%; }
-col.c7 { width: 18%; }
-col.c8 { width: 12%; }
 
 th {
   background: #4a7c59;
   color: #fff;
   border: 1px solid #3a6a49;
-  padding: 2px 2px;
+  padding: 2px 4px;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   vertical-align: middle;
-  line-height: 1.25;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+th span {
+  display: block;
+  white-space: nowrap;
 }
 
 td {
   border: 1px solid #ccc;
-  padding: 2px 3px;
+  padding: 2px 4px;
   text-align: right;
   font-size: 13px;
   background: #fafff7;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 td.center { text-align: center; }
@@ -183,25 +176,15 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
   <div class="card">
     <div class="card-title">${monthDay(expiryDate)} Contract (${formatExpiry(expiryDate)})</div>
     <table>
-      <colgroup>
-        <col class="c1">
-        <col class="c2">
-        <col class="c3">
-        <col class="c4">
-        <col class="c5">
-        <col class="c6">
-        <col class="c7">
-        <col class="c8">
-      </colgroup>
       <tr>
-        <th>MCX Contract<br>Expiry</th>
-        <th>XAU/USD<br>Spot Rate</th>
-        <th>USD/INR<br>Spot Rate</th>
-        <th>Gold/INR<br>Spot Rate<br>With Duty</th>
-        <th>${monthDay(expiryDate)}<br>MCX Fwd<br>Rate</th>
-        <th>Forward<br>Premium/<br>(Discount)</th>
-        <th>Annualised<br>Forward Premium/<br>(Discount) %</th>
-        <th>XAU/USD<br>Forward<br>Rate</th>
+        <th><span>MCX</span><span>Contract</span><span>Expiry</span></th>
+        <th><span>XAU/USD</span><span>Spot Rate</span></th>
+        <th><span>USD/INR</span><span>Spot Rate</span></th>
+        <th><span>Gold/INR</span><span>Spot Rate</span><span>With Duty</span></th>
+        <th><span>${monthDay(expiryDate)}</span><span>MCX Fwd</span><span>Rate</span></th>
+        <th><span>Forward</span><span>Premium/</span><span>(Discount)</span></th>
+        <th><span>Annualised Fwd</span><span>Premium/</span><span>(Discount) %</span></th>
+        <th><span>XAU/USD</span><span>Forward</span><span>Rate</span></th>
       </tr>
       <tr>
         <td class="center">${formatExpiry(expiryDate)}</td>
