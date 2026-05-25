@@ -244,6 +244,22 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
     '</div>';
 }
 
+function buildBoardRate(gold24k, gold22k) {
+  return '<div class="card">' +
+    '<div class="card-title">Board Rate (Kerala)</div>' +
+    '<table>' +
+    '<tr>' +
+      '<th>24K Gold / g</th>' +
+      '<th>22K Gold / g</th>' +
+    '</tr>' +
+    '<tr>' +
+      '<td>' + comma.format(gold24k) + '</td>' +
+      '<td>' + comma.format(gold22k) + '</td>' +
+    '</tr>' +
+    '</table>' +
+    '</div>';
+}
+
 function load() {
 
   var exp = getExpiries();
@@ -266,8 +282,8 @@ function load() {
       var xau = Number(data.xau);
       var inr = Number(data.inr);
 
-      var nearPrice = data.mcx_near || data.mcx_jun || data.mcx_aug || null;
-      var nextPrice = data.mcx_next || data.mcx_aug || data.mcx_oct || null;
+      var nearPrice = data.mcx_near || data.mcx_jun || null;
+      var nextPrice = data.mcx_next || data.mcx_aug || null;
       var farPrice = data.mcx_far || data.mcx_oct || null;
 
       var html = "";
@@ -288,6 +304,11 @@ function load() {
       } else {
         html += '<div class="card"><div class="card-title">' + monthDay(farDate) + ' Contract (' + formatExpiry(farDate) + ')</div>' +
           '<p style="color:#ccc;padding:6px;font-size:11px;text-align:center;">Far expiry data not available yet.</p></div>';
+      }
+
+      // Board Rate table
+      if (data.gold_24k && data.gold_22k) {
+        html += buildBoardRate(data.gold_24k, data.gold_22k);
       }
 
       document.getElementById("tables").innerHTML = html;
