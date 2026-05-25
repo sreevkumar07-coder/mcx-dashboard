@@ -2,51 +2,122 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>MCX Gold Forward Dashboard</title>
+<title>Gold Forward Dashboard</title>
 <style>
-body { font-family: Arial; padding: 20px; }
-h2 { margin-bottom: 10px; }
 
-table {
-  border-collapse: collapse;
-  margin-bottom: 25px;
-  width: 100%;
-  max-width: 1100px;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  padding: 24px;
+  background: #f5f5f5;
+  color: #222;
 }
 
-th {
-  background: #a9bf9c;
-  border: 2px solid black;
-  padding: 10px 8px;
-  text-align: center;
+h2 {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
   font-size: 14px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: bold;
 }
 
+.badge.live { background: #d4edda; color: #155724; }
+.badge.stale { background: #fff3cd; color: #856404; }
+.badge.error { background: #f8d7da; color: #721c24; }
+
+.card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  background: #4a7c59;
+  color: #fff;
+  border: 1px solid #3a6a49;
+  padding: 10px 8px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 td {
-  border: 2px solid black;
+  border: 1px solid #ccc;
   padding: 10px 8px;
   text-align: right;
-  font-size: 18px;
+  font-size: 17px;
+  background: #fafff7;
 }
 
 td.center { text-align: center; }
 td.bold { font-weight: bold; }
 
-.status { margin-bottom: 10px; font-size: 14px; }
-.meta { margin-top: 10px; font-size: 12px; color: gray; }
+.footer {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #888;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footer span {
+  background: #eee;
+  padding: 3px 8px;
+  border-radius: 8px;
+}
+
 </style>
 </head>
 
 <body>
 
-<h2>MCX Gold Forward Premium Dashboard</h2>
+<h2>Gold Forward Premium Dashboard</h2>
+<div class="subtitle">Live rates from dealer feed &bull; Auto-refreshing</div>
 
-<div class="status" id="status">Loading...</div>
+<div class="status-bar">
+  <span id="status">Loading...</span>
+  <span id="badge" class="badge"></span>
+</div>
 
 <div id="tables"></div>
 
-<div class="meta" id="time"></div>
+<div class="footer" id="footer"></div>
 
 <script>
 
@@ -56,86 +127,71 @@ const WORKER_URL = "https://mcxdashboard.sreekumar.workers.dev";
 const conv = 31.99;
 const duty = 1.15;
 
-// ===== AUTO EXPIRY CALCULATOR =====
-// MCX Gold expires on 5th of every EVEN month
-// Even months: 2, 4, 6, 8, 10, 12
+// ===== FRESHNESS TRACKING =====
+let lastFetchTime = null;
+const STALE_LIMIT = 5 * 60 * 1000; // 5 minutes in ms
 
+// ===== AUTO EXPIRY CALCULATOR =====
 function getExpiries() {
   const today = new Date();
   const year = today.getFullYear();
-  const month = today.getMonth() + 1; // 1-12
+  const month = today.getMonth() + 1;
   const day = today.getDate();
 
   const evenMonths = [2, 4, 6, 8, 10, 12];
-
-  // Build list of upcoming expiry dates (next 6)
   const expiries = [];
 
   for (let y = year; y <= year + 1; y++) {
     for (const m of evenMonths) {
-      const expDate = new Date(y, m - 1, 5); // month is 0-indexed
-      expiries.push(expDate);
+      expiries.push(new Date(y, m - 1, 5));
     }
   }
 
-  // Filter: only future or today
-  const upcoming = expiries.filter(d => {
-    // If expiry is today, still consider it "near" until end of day
-    return d >= new Date(year, month - 1, day);
-  });
+  const upcoming = expiries
+    .filter(d => d >= new Date(year, month - 1, day))
+    .sort((a, b) => a - b);
 
-  // Sort by date
-  upcoming.sort((a, b) => a - b);
-
-  // Near = first upcoming, Next = second upcoming
-  const near = upcoming[0];
-  const next = upcoming[1];
-
-  return { near, next };
+  return { near: upcoming[0], next: upcoming[1] };
 }
 
 function formatExpiry(d) {
-  return d.toLocaleDateString('en-GB', {
+  return d.toLocaleDateString('en-IN', {
     day: '2-digit', month: 'short', year: '2-digit'
   });
 }
 
-function monthLabel(d) {
+function monthDay(d) {
   return d.toLocaleDateString('en-US', {
     month: 'short', day: '2-digit'
   });
 }
 
 function toISO(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 // ===== HELPERS =====
 const comma = new Intl.NumberFormat('en-IN');
-
 function d0(x) { return comma.format(Math.round(x)); }
 function d2(x) { return Number(x).toFixed(2); }
 
 function daysTo(dateStr) {
   const today = new Date();
   const exp = new Date(dateStr);
-  const diff = (exp - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000;
-  return Math.max(1, Math.round(diff));
+  return Math.max(1, Math.round(
+    (exp - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000
+  ));
 }
 
 // ===== BUILD TABLE =====
-function buildTable(expiryDate, xau, inr, mcxFwdPer10g) {
+function buildTable(expiryDate, xau, inr, mcxPer10g) {
 
   const expISO = toISO(expiryDate);
 
   const spotWithout = xau * inr * conv / 1000;
   const spotWith = spotWithout * duty;
 
-  // MCX is per 10g, convert to per gram
-  const mcxPerGram = mcxFwdPer10g / 10;
+  const mcxPerGram = mcxPer10g / 10;
 
   const premium = mcxPerGram - spotWith;
   const days = daysTo(expISO);
@@ -143,30 +199,33 @@ function buildTable(expiryDate, xau, inr, mcxFwdPer10g) {
   const xauFwd = mcxPerGram / duty / inr / conv * 1000;
 
   return `
-  <table>
-    <tr>
-      <th>MCX CONTRACT EXPIRY</th>
-      <th>XAU/USD SPOT RATE</th>
-      <th>USD/INR SPOT RATE</th>
-      <th>GOLD/INR SPOT RATE WITHOUT DUTY</th>
-      <th>GOLD/INR SPOT RATE WITH DUTY</th>
-      <th>${monthLabel(expiryDate)} MCX FWD RATE</th>
-      <th>FORWARD PREMIUM/ (DISCOUNT)</th>
-      <th>ANNUALISED FORWARD PREMIUM/ (DISCOUNT) %</th>
-      <th>XAU/USD FORWARD RATE</th>
-    </tr>
-    <tr>
-      <td class="center">${formatExpiry(expiryDate)}</td>
-      <td>${d0(xau)}</td>
-      <td>${d2(inr)}</td>
-      <td>${d0(spotWithout)}</td>
-      <td class="bold">${d0(spotWith)}</td>
-      <td class="bold">${d0(mcxPerGram)}</td>
-      <td>${Math.round(premium)}</td>
-      <td class="bold">${d2(annualised)}%</td>
-      <td class="bold">${d0(xauFwd)}</td>
-    </tr>
-  </table>
+  <div class="card">
+    <div class="card-title">${monthDay(expiryDate)} Contract (${formatExpiry(expiryDate)})</div>
+    <table>
+      <tr>
+        <th>Mcx Contract Expiry</th>
+        <th>Xau/Usd Spot Rate</th>
+        <th>Usd/Inr Spot Rate</th>
+        <th>Gold/Inr Spot Rate Without Duty</th>
+        <th>Gold/Inr Spot Rate With Duty</th>
+        <th>${monthDay(expiryDate)} Mcx Fwd Rate</th>
+        <th>Forward Premium/ (Discount)</th>
+        <th>Annualised Forward Premium/ (Discount) %</th>
+        <th>Xau/Usd Forward Rate</th>
+      </tr>
+      <tr>
+        <td class="center">${formatExpiry(expiryDate)}</td>
+        <td>${d0(xau)}</td>
+        <td>${d2(inr)}</td>
+        <td>${d0(spotWithout)}</td>
+        <td class="bold">${d0(spotWith)}</td>
+        <td class="bold">${d0(mcxPerGram)}</td>
+        <td>${Math.round(premium)}</td>
+        <td class="bold">${d2(annualised)}%</td>
+        <td class="bold">${d0(xauFwd)}</td>
+      </tr>
+    </table>
+  </div>
   `;
 }
 
@@ -174,6 +233,8 @@ function buildTable(expiryDate, xau, inr, mcxFwdPer10g) {
 async function load() {
   try {
     document.getElementById("status").innerText = "Fetching live data...";
+    document.getElementById("badge").className = "badge";
+    document.getElementById("badge").innerText = "";
 
     const res = await fetch(WORKER_URL, { cache: "no-store" });
     const data = await res.json();
@@ -182,44 +243,74 @@ async function load() {
 
     const xau = Number(data.xau);
     const inr = Number(data.inr);
-
-    // Auto-calculate expiries
     const { near, next } = getExpiries();
 
     let html = "";
 
-    // Near expiry table (Jun → Aug → Oct automatically)
+    // Near expiry
     if (data.mcx_jun) {
       html += buildTable(near, xau, inr, data.mcx_jun);
     }
 
-    // Next expiry table
+    // Next expiry
     if (data.mcx_aug) {
       html += buildTable(next, xau, inr, data.mcx_aug);
     } else {
-      html += `<p style="color:gray;">⚠️ Next expiry (${formatExpiry(next)}) data not available yet</p>`;
+      html += `<div class="card">
+        <div class="card-title">${monthDay(next)} Contract (${formatExpiry(next)})</div>
+        <p style="color:#888; padding:10px;">Next expiry data not available yet. Will appear automatically when active.</p>
+      </div>`;
     }
 
-    // Show which contracts are active
-    html += `<div class="meta">
-      Near expiry: ${formatExpiry(near)} &nbsp;|&nbsp;
-      Next expiry: ${formatExpiry(next)} &nbsp;|&nbsp;
-      Auto-rolling ✅
-    </div>`;
-
     document.getElementById("tables").innerHTML = html;
-    document.getElementById("status").innerText = "Live ✅";
-    document.getElementById("time").innerText = "Updated: " + new Date().toLocaleString();
+
+    // Status
+    lastFetchTime = Date.now();
+    document.getElementById("status").innerText = "Live";
+    document.getElementById("badge").className = "badge live";
+    document.getElementById("badge").innerText = "✅ Live";
+
+    // Footer
+    document.getElementById("footer").innerHTML = `
+      <span>Updated: ${new Date().toLocaleString()}</span>
+      <span>Near: ${formatExpiry(near)}</span>
+      <span>Next: ${formatExpiry(next)}</span>
+      <span>Auto-rolling ✅</span>
+    `;
 
   } catch (e) {
     console.error(e);
-    document.getElementById("status").innerText = "❌ Data error";
+    document.getElementById("status").innerText = "Error";
+    document.getElementById("badge").className = "badge error";
+    document.getElementById("badge").innerText = "❌ Data error";
   }
 }
 
-// run
+// ===== SMART AUTO-REFRESH =====
+// Check every 30 seconds
+// If data is older than 5 minutes → force refresh
+
+setInterval(function() {
+
+  if (!lastFetchTime) {
+    // Never fetched → fetch now
+    load();
+    return;
+  }
+
+  const age = Date.now() - lastFetchTime;
+
+  if (age > STALE_LIMIT) {
+    // Data is stale → refresh
+    document.getElementById("badge").className = "badge stale";
+    document.getElementById("badge").innerText = "⏳ Refreshing...";
+    load();
+  }
+
+}, 30000);
+
+// Initial load
 load();
-setInterval(load, 30000);
 
 </script>
 
