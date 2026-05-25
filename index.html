@@ -6,7 +6,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>MCX Gold Forward Premium Dashboard</title>
-<style0a0c;<style>
+<style>
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+  padding: 0;
+  background: #1a0a0c;
   color: #fff;
   -webkit-text-size-adjust: 100%;
 }
@@ -127,7 +134,6 @@ const duty = 1.15;
 let lastFetchTime = null;
 const STALE_LIMIT = 5 * 60 * 1000;
 
-// ===== AUTO EXPIRY (near, next, far) =====
 function getExpiries() {
   const today = new Date();
   const year = today.getFullYear();
@@ -192,7 +198,6 @@ function daysTo(dateStr) {
   ));
 }
 
-// ===== BUILD TABLE =====
 function buildTable(expiryDate, xau, inr, mcxPer10g) {
 
   const expISO = toISO(expiryDate);
@@ -232,7 +237,6 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
   `;
 }
 
-// ===== MAIN =====
 async function load() {
   try {
 
@@ -247,12 +251,10 @@ async function load() {
 
     let html = "";
 
-    // Near expiry
     if (data.mcx_near) {
       html += buildTable(near, xau, inr, data.mcx_near);
     }
 
-    // Next expiry
     if (data.mcx_next) {
       html += buildTable(next, xau, inr, data.mcx_next);
     } else {
@@ -264,14 +266,9 @@ async function load() {
       </div>`;
     }
 
-    // Far expiry
     if (data.mcx_far) {
       html += buildTable(far, xau, inr, data.mcx_far);
     } else {
-
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
-  padding: 0;
+      html += `<div class="card">
+        <div class="card-title">${monthDay(far)} Contract (${formatExpiry(far)})</div>
+        <p style="color:#ccc; padding:6px; font-size:11px; text-align:center;">
