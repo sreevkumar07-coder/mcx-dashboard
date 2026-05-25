@@ -134,6 +134,7 @@ const duty = 1.15;
 let lastFetchTime = null;
 const STALE_LIMIT = 5 * 60 * 1000;
 
+// ===== AUTO EXPIRY (near, next, far) =====
 function getExpiries() {
   const today = new Date();
   const year = today.getFullYear();
@@ -153,7 +154,7 @@ function getExpiries() {
     .filter(d => d >= new Date(year, month - 1, day))
     .sort((a, b) => a - b);
 
-  return { near: upcoming[0], next: upcoming[1] };
+  return { near: upcoming[0], next: upcoming[1], far: upcoming[2] };
 }
 
 function formatExpiry(d) {
@@ -198,6 +199,7 @@ function daysTo(dateStr) {
   ));
 }
 
+// ===== BUILD TABLE =====
 function buildTable(expiryDate, xau, inr, mcxPer10g) {
 
   const expISO = toISO(expiryDate);
@@ -237,6 +239,7 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
   `;
 }
 
+// ===== MAIN =====
 async function load() {
   try {
 
@@ -247,22 +250,7 @@ async function load() {
 
     const xau = Number(data.xau);
     const inr = Number(data.inr);
-    const { near, next } = getExpiries();
-
-    // Calculate far expiry (3rd contract)
-    const evenMonths = [2, 4, 6, 8, 10, 12];
-    const expiries = [];
-    const today = new Date();
-    for (let y = today.getFullYear(); y <= today.getFullYear() + 1; y++) {
-      for (const m of evenMonths) {
-        expiries.push(new Date(y, m - 1, 5));
-      }
-    }
-    const upcoming = expiries
-      .filter(d => d >= new Date(today.getFullYear(), today.getMonth(), today.getDate()))
-      .sort((a, b) => a - b);
-
-    const far = upcoming[2]; // 3rd upcoming expiry
+    const { near, next, far } = getExpiries();
 
     let html = "";
 
@@ -313,16 +301,19 @@ async function load() {
   }
 }
 
+// ===== AUTO REFRESH =====
 setInterval(function() {
   if (!lastFetchTime || (Date.now() - lastFetchTime) > STALE_LIMIT) load();
 }, 30000);
 
+// ===== REFRESH ON APP OPEN =====
 document.addEventListener("visibilitychange", function() {
   if (document.visibilityState === "visible") load();
 });
 
 window.addEventListener("focus", function() { load(); });
 
+// ===== INITIAL LOAD =====
 load();
 
 </script>
