@@ -2,14 +2,32 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Test Dashboard</title>
+<title>Gold Dashboard Test</title>
+
+<style>
+body { font-family: Arial; padding: 20px; }
+h2 { margin-bottom: 10px; }
+.box {
+  border: 1px solid #ccc;
+  padding: 15px;
+  width: 300px;
+  background: #f9f9f9;
+}
+.status { margin-bottom: 10px; }
+.meta { margin-top: 15px; font-size: 12px; color: gray; }
+</style>
+
 </head>
 
 <body>
 
-<h2>Test (No MCX)</h2>
+<h2>Gold Forward Test (No MCX)</h2>
 
-<div id="output">Loading...</div>
+<div class="status" id="status">Loading...</div>
+
+<div class="box" id="output"></div>
+
+<div class="meta" id="time"></div>
 
 <script>
 
@@ -17,43 +35,53 @@
 const conv = 31.99;
 const factor = 1.15;
 
-// ===== FETCH XAU =====
-async function getXAU() {
-  const res = await fetch("https://gold-api.com/price/XAU");
-  const data = await res.json();
-  return data.price;
-}
-
-// ===== FETCH USDINR =====
+// ===== FETCH USD/INR =====
 async function getINR() {
-  const res = await fetch("https://latest.currency-api.pages.dev/v1/currencies/usd.json");
+  const res = await fetch(
+    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
+  );
   const data = await res.json();
   return data.usd.inr;
 }
 
 // ===== MAIN =====
 async function load() {
-
   try {
 
-    const xau = await getXAU();
+    document.getElementById("status").innerText = "Fetching data...";
+
     const inr = await getINR();
 
+    // ✅ SAFE HARD-CODED XAU (for now)
+    const xau = 4500;
+
+    // ✅ YOUR EXACT FORMULA
     const spot = xau * inr * conv / 1000 * factor;
 
     document.getElementById("output").innerHTML = `
-      XAU/USD: ${xau} <br>
-      USD/INR: ${inr.toFixed(2)} <br>
-      Spot (₹/10g): ${Math.round(spot)}
+      <b>XAU/USD</b>: ${xau}<br><br>
+      <b>USD/INR</b>: ${inr.toFixed(2)}<br><br>
+      <b>Spot (₹/10g)</b>: ${Math.round(spot)}
     `;
 
+    document.getElementById("status").innerText = "Working ✅";
+
+    document.getElementById("time").innerText =
+      "Last updated: " + new Date().toLocaleString();
+
   } catch (e) {
-    document.getElementById("output").innerText =
-      "❌ Fetch failed";
+
+    document.getElementById("status").innerText =
+      "❌ Data fetch error (check internet/API)";
+
   }
 }
 
+// run
 load();
+
+// auto refresh
+setInterval(load, 60000);
 
 </script>
 
