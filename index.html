@@ -56,9 +56,62 @@ const WORKER_URL = "https://mcxdashboard.sreekumar.workers.dev";
 const conv = 31.99;
 const duty = 1.15;
 
-// ===== EXPIRY DATES =====
-const junExpiry = "2026-06-05";
-const augExpiry = "2026-08-05";
+// ===== AUTO EXPIRY CALCULATOR =====
+// MCX Gold expires on 5th of every EVEN month
+// Even months: 2, 4, 6, 8, 10, 12
+
+function getExpiries() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1; // 1-12
+  const day = today.getDate();
+
+  const evenMonths = [2, 4, 6, 8, 10, 12];
+
+  // Build list of upcoming expiry dates (next 6)
+  const expiries = [];
+
+  for (let y = year; y <= year + 1; y++) {
+    for (const m of evenMonths) {
+      const expDate = new Date(y, m - 1, 5); // month is 0-indexed
+      expiries.push(expDate);
+    }
+  }
+
+  // Filter: only future or today
+  const upcoming = expiries.filter(d => {
+    // If expiry is today, still consider it "near" until end of day
+    return d >= new Date(year, month - 1, day);
+  });
+
+  // Sort by date
+  upcoming.sort((a, b) => a - b);
+
+  // Near = first upcoming, Next = second upcoming
+  const near = upcoming[0];
+  const next = upcoming[1];
+
+  return { near, next };
+}
+
+function formatExpiry(d) {
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit', month: 'short', year: '2-digit'
+  });
+}
+
+function monthLabel(d) {
+  return d.toLocaleDateString('en-US', {
+    month: 'short', day: '2-digit'
+  });
+}
+
+function toISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
 
 // ===== HELPERS =====
 const comma = new Intl.NumberFormat('en-IN');
@@ -74,7 +127,9 @@ function daysTo(dateStr) {
 }
 
 // ===== BUILD TABLE =====
-function buildTable(label, expiry, xau, inr, mcxFwdPer10g) {
+function buildTable(expiryDate, xau, inr, mcxFwdPer10g) {
+
+  const expISO = toISO(expiryDate);
 
   const spotWithout = xau * inr * conv / 1000;
   const spotWith = spotWithout * duty;
@@ -83,17 +138,9 @@ function buildTable(label, expiry, xau, inr, mcxFwdPer10g) {
   const mcxPerGram = mcxFwdPer10g / 10;
 
   const premium = mcxPerGram - spotWith;
-  const days = daysTo(expiry);
+  const days = daysTo(expISO);
   const annualised = (premium / spotWith) / days * 365 * 100;
   const xauFwd = mcxPerGram / duty / inr / conv * 1000;
-
-  const expiryLabel = new Date(expiry).toLocaleDateString('en-GB', {
-    day: '2-digit', month: 'short', year: '2-digit'
-  });
-
-  const monthLabel = new Date(expiry).toLocaleDateString('en-US', {
-    month: 'short', day: '2-digit'
-  });
 
   return `
   <table>
@@ -103,13 +150,13 @@ function buildTable(label, expiry, xau, inr, mcxFwdPer10g) {
       <th>USD/INR SPOT RATE</th>
       <th>GOLD/INR SPOT RATE WITHOUT DUTY</th>
       <th>GOLD/INR SPOT RATE WITH DUTY</th>
-      <th>${monthLabel} MCX FWD RATE</th>
+      <th>${monthLabel(expiryDate)} MCX FWD RATE</th>
       <th>FORWARD PREMIUM/ (DISCOUNT)</th>
       <th>ANNUALISED FORWARD PREMIUM/ (DISCOUNT) %</th>
       <th>XAU/USD FORWARD RATE</th>
     </tr>
     <tr>
-      <td class="center">${expiryLabel}</td>
+      <td class="center">${formatExpiry(expiryDate)}</td>
       <td>${d0(xau)}</td>
       <td>${d2(inr)}</td>
       <td>${d0(spotWithout)}</td>
@@ -136,19 +183,29 @@ async function load() {
     const xau = Number(data.xau);
     const inr = Number(data.inr);
 
+    // Auto-calculate expiries
+    const { near, next } = getExpiries();
+
     let html = "";
 
-    // Jun table
+    // Near expiry table (Jun → Aug → Oct automatically)
     if (data.mcx_jun) {
-      html += buildTable("Jun", junExpiry, xau, inr, data.mcx_jun);
+      html += buildTable(near, xau, inr, data.mcx_jun);
     }
 
-    // Aug table
+    // Next expiry table
     if (data.mcx_aug) {
-      html += buildTable("Aug", augExpiry, xau, inr, data.mcx_aug);
+      html += buildTable(next, xau, inr, data.mcx_aug);
     } else {
-      html += `<p style="color:gray;">⚠️ Aug contract data not available currently</p>`;
+      html += `<p style="color:gray;">⚠️ Next expiry (${formatExpiry(next)}) data not available yet</p>`;
     }
+
+    // Show which contracts are active
+    html += `<div class="meta">
+      Near expiry: ${formatExpiry(near)} &nbsp;|&nbsp;
+      Next expiry: ${formatExpiry(next)} &nbsp;|&nbsp;
+      Auto-rolling ✅
+    </div>`;
 
     document.getElementById("tables").innerHTML = html;
     document.getElementById("status").innerText = "Live ✅";
