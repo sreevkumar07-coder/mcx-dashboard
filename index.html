@@ -57,26 +57,28 @@ function calc(xau, inr, mcx, expiry) {
 
 // ===== FETCH MCX =====
 async function getMCX() {
-    const url = "https://api.allorigins.win/raw?url=https://mcxlive.in/";
-    const html = await fetch(url).then(r => r.text());
+  try {
+    // Try primary source
+    const res = await fetch("https://mcxlive.in/");
+    const html = await res.text();
 
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    const rows = doc.querySelectorAll("table tr");
+    return parseMCX(html);
 
-    let jun = null, aug = null;
+  } catch (e) {
+    console.log("Primary failed, trying fallback");
 
-    rows.forEach(r => {
-        const t = r.innerText;
+    try {
+      // fallback mirror
+      const res = await fetch("https://mcxlive.org/gold/");
+      const html = await res.text();
 
-        if (t.includes("GOLD 05-Jun")) {
-            jun = parseFloat(t.split(/\s+/)[2]);
-        }
-        if (t.includes("GOLD 05-Aug")) {
-            aug = parseFloat(t.split(/\s+/)[2]);
-        }
-    });
+      return parseMCX(html);
 
-    return { jun, aug };
+    } catch (e2) {
+      console.log("Fallback also failed");
+      return { jun: null, aug: null };
+    }
+  }
 }
 
 // ===== FETCH USDINR =====
