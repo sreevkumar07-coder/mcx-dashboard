@@ -11,15 +11,15 @@
 
 body {
   font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
-  padding: 6px;
+  padding: 8px;
   background: #f0f0f0;
   color: #222;
   -webkit-text-size-adjust: 100%;
 }
 
 h2 {
-  font-size: 15px;
-  margin-bottom: 6px;
+  font-size: 16px;
+  margin-bottom: 8px;
   text-align: center;
 }
 
@@ -27,15 +27,15 @@ h2 {
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 6px;
-  padding: 4px;
+  padding: 6px;
   margin-bottom: 8px;
   width: 100%;
 }
 
 .card-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: bold;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
   color: #333;
   text-align: center;
 }
@@ -50,9 +50,9 @@ th {
   background: #4a7c59;
   color: #fff;
   border: 1px solid #3a6a49;
-  padding: 3px 2px;
+  padding: 4px 2px;
   text-align: center;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   vertical-align: middle;
   line-height: 1.2;
@@ -62,9 +62,9 @@ th {
 
 td {
   border: 1px solid #ccc;
-  padding: 4px 2px;
-  text-align: right;
-  font-size: 11px;
+  padding: 6px 2px;
+  text-align: center;
+  font-size: 14px;
   font-weight: bold;
   background: #fafff7;
   line-height: 1.2;
@@ -72,23 +72,11 @@ td {
   overflow-wrap: break-word;
 }
 
-td.center { text-align: center; }
-
 .footer {
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 9px;
   color: #999;
   text-align: center;
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.footer span {
-  background: #eee;
-  padding: 1px 4px;
-  border-radius: 4px;
 }
 
 </style>
@@ -167,12 +155,8 @@ function daysTo(dateStr) {
 function buildTable(expiryDate, xau, inr, mcxPer10g) {
 
   const expISO = toISO(expiryDate);
-
-  const spotWithout = xau * inr * conv / 1000;
-  const spotWith = spotWithout * duty;
-
+  const spotWith = xau * inr * conv / 1000 * duty;
   const mcxPerGram = mcxPer10g / 10;
-
   const premium = mcxPerGram - spotWith;
   const days = daysTo(expISO);
   const annualised = (premium / spotWith) / days * 365 * 100;
@@ -186,14 +170,14 @@ function buildTable(expiryDate, xau, inr, mcxPer10g) {
         <th>MCX Expiry</th>
         <th>XAU/ USD</th>
         <th>USD/ INR</th>
-        <th>Gold/ INR With Duty</th>
+        <th>Gold/ INR Duty</th>
         <th>${monthDay(expiryDate)} MCX Fwd</th>
-        <th>Fwd Premium/ (Disc.)</th>
-        <th>Ann. Fwd Prem/ (Disc.) %</th>
+        <th>Fwd Prem/ (Disc)</th>
+        <th>Ann. Prem/ (Disc) %</th>
         <th>XAU/ USD Fwd</th>
       </tr>
       <tr>
-        <td class="center">${formatExpiry(expiryDate)}</td>
+        <td>${formatExpiry(expiryDate)}</td>
         <td>${d0(xau)}</td>
         <td>${d2(inr)}</td>
         <td>${d0(spotWith)}</td>
@@ -230,45 +214,36 @@ async function load() {
     } else {
       html += `<div class="card">
         <div class="card-title">${monthDay(next)} Contract (${formatExpiry(next)})</div>
-        <p style="color:#888; padding:4px; font-size:10px; text-align:center;">
+        <p style="color:#888; padding:4px; font-size:11px; text-align:center;">
           Next expiry data not available yet.
         </p>
       </div>`;
     }
 
     document.getElementById("tables").innerHTML = html;
-
     lastFetchTime = Date.now();
 
-    document.getElementById("footer").innerHTML = `
-      <span>Updated: ${new Date().toLocaleString()}</span>
-      <span>Near: ${formatExpiry(near)}</span>
-      <span>Next: ${formatExpiry(next)}</span>
-    `;
+    document.getElementById("footer").innerHTML =
+      "Updated: " + new Date().toLocaleString() +
+      " &nbsp;|&nbsp; Near: " + formatExpiry(near) +
+      " &nbsp;|&nbsp; Next: " + formatExpiry(next);
 
   } catch (e) {
     console.error(e);
-    document.getElementById("footer").innerHTML = `
-      <span style="color:#c00;">❌ Data error</span>
-    `;
+    document.getElementById("footer").innerHTML = "❌ Data error";
   }
 }
 
-// ===== AUTO REFRESH (5 min stale) =====
 setInterval(function() {
-  if (!lastFetchTime || (Date.now() - lastFetchTime) > STALE_LIMIT) {
-    load();
-  }
+  if (!lastFetchTime || (Date.now() - lastFetchTime) > STALE_LIMIT) load();
 }, 30000);
 
-// ===== REFRESH ON APP OPEN / SWITCH BACK =====
 document.addEventListener("visibilitychange", function() {
   if (document.visibilityState === "visible") load();
 });
 
 window.addEventListener("focus", function() { load(); });
 
-// ===== INITIAL LOAD =====
 load();
 
 </script>
