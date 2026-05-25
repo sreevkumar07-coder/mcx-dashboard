@@ -126,34 +126,43 @@ td {
 
 <script>
 
-const WORKER_URL = "https://mcxdashboard.sreekumar.workers.dev";
+var WORKER_BASE = "https://mcxdashboard.sreekumar.workers.dev";
 
-const conv = 31.99;
-const duty = 1.15;
+var conv = 31.99;
+var duty = 1.15;
 
-let lastFetchTime = null;
-const STALE_LIMIT = 5 * 60 * 1000;
+var lastFetchTime = null;
+var STALE_LIMIT = 5 * 60 * 1000;
+
+var MN = {1:"JAN",2:"FEB",3:"MAR",4:"APR",5:"MAY",6:"JUN",7:"JUL",8:"AUG",9:"SEP",10:"OCT",11:"NOV",12:"DEC"};
 
 function getExpiries() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1;
-  const day = today.getDate();
+  var today = new Date();
+  var year = today.getFullYear();
+  var month = today.getMonth() + 1;
+  var day = today.getDate();
 
-  const evenMonths = [2, 4, 6, 8, 10, 12];
-  const expiries = [];
+  var evenMonths = [2, 4, 6, 8, 10, 12];
+  var expiries = [];
 
-  for (let y = year; y <= year + 1; y++) {
-    for (const m of evenMonths) {
-      expiries.push(new Date(y, m - 1, 5));
+  for (var y = year; y <= year + 1; y++) {
+    for (var i = 0; i < evenMonths.length; i++) {
+      expiries.push({ date: new Date(y, evenMonths[i] - 1, 5), m: evenMonths[i] });
     }
   }
 
-  const upcoming = expiries
-    .filter(d => d >= new Date(year, month - 1, day))
-    .sort((a, b) => a - b);
+  var upcoming = [];
+  var cutoff = new Date(year, month - 1, day);
+  for (var j = 0; j < expiries.length; j++) {
+    if (expiries[j].date >= cutoff) upcoming.push(expiries[j]);
+  }
+  upcoming.sort(function(a, b) { return a.date - b.date; });
 
-  return { near: upcoming[0], next: upcoming[1], far: upcoming[2] };
+  return {
+    near: upcoming[0],
+    next: upcoming[1],
+    far: upcoming[2]
+  };
 }
 
 function formatExpiry(d) {
@@ -174,25 +183,25 @@ function toISO(d) {
     String(d.getDate()).padStart(2,'0');
 }
 
-const comma = new Intl.NumberFormat('en-IN');
+var comma = new Intl.NumberFormat('en-IN');
 function d0(x) { return comma.format(Math.round(x)); }
 function d2(x) { return Number(x).toFixed(2); }
 
 function fmtPrem(x) {
-  const v = Math.round(x);
+  var v = Math.round(x);
   return v < 0 ? "(" + comma.format(Math.abs(v)) + ")" : comma.format(v);
 }
 
 function fmtPct(x) {
-  const v = Number(x).toFixed(2);
+  var v = Number(x).toFixed(2);
   return Number(v) < 0
     ? "(" + Math.abs(Number(v)).toFixed(2) + "%)"
     : v + "%";
 }
 
 function daysTo(dateStr) {
-  const today = new Date();
-  const exp = new Date(dateStr);
+  var today = new Date();
+  var exp = new Date(dateStr);
   return Math.max(1, Math.round(
     (exp - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000
   ));
@@ -200,75 +209,118 @@ function daysTo(dateStr) {
 
 function buildTable(expiryDate, xau, inr, mcxPer10g) {
 
-  const expISO = toISO(expiryDate);
-  const spotWith = xau * inr * conv / 1000 * duty;
-  const mcxPerGram = mcxPer10g / 10;
-  const premium = mcxPerGram - spotWith;
-  const days = daysTo(expISO);
-  const annualised = (premium / spotWith) / days * 365 * 100;
-  const xauFwd = mcxPerGram / duty / inr / conv * 1000;
+  var expISO = toISO(expiryDate);
+  var spotWith = xau * inr * conv / 1000 * duty;
+  var mcxPerGram = mcxPer10g / 10;
+  var premium = mcxPerGram - spotWith;
+  var days = daysTo(expISO);
+  var annualised = (premium / spotWith) / days * 365 * 100;
+  var xauFwd = mcxPerGram / duty / inr / conv * 1000;
 
-  return `
-  <div class="card">
-    <div class="card-title">${monthDay(expiryDate)} Contract (${formatExpiry(expiryDate)})</div>
-    <table>
-      <tr>
-        <th>MCX<br>Expiry</th>
-        <th>XAU/USD<br>Spot</th>
-        <th>USD/INR<br>Spot</th>
-        <th>Gold/INR<br>Spot<br>With Duty</th>
-        <th>${monthDay(expiryDate)}<br>MCX Fwd<br>Rate</th>
-        <th>Forward<br>Premium/<br>(Discount)</th>
-        <th>Annualised<br>Fwd Premium/<br>(Discount) %</th>
-        <th>XAU/USD<br>Forward<br>Rate</th>
-      </tr>
-      <tr>
-        <td>${formatExpiry(expiryDate)}</td>
-        <td>${d0(xau)}</td>
-        <td>${d2(inr)}</td>
-        <td>${d0(spotWith)}</td>
-        <td>${d0(mcxPerGram)}</td>
-        <td>${fmtPrem(premium)}</td>
-        <td>${fmtPct(annualised)}</td>
-        <td>${d0(xauFwd)}</td>
-      </tr>
-    </table>
-  </div>
-  `;
+  return '<div class="card">' +
+    '<div class="card-title">' + monthDay(expiryDate) + ' Contract (' + formatExpiry(expiryDate) + ')</div>' +
+    '<table>' +
+    '<tr>' +
+      '<th>MCX<br>Expiry</th>' +
+      '<th>XAU/USD<br>Spot</th>' +
+      '<th>USD/INR<br>Spot</th>' +
+      '<th>Gold/INR<br>Spot<br>With Duty</th>' +
+      '<th>' + monthDay(expiryDate) + '<br>MCX Fwd<br>Rate</th>' +
+      '<th>Forward<br>Premium/<br>(Discount)</th>' +
+      '<th>Annualised<br>Fwd Premium/<br>(Discount) %</th>' +
+      '<th>XAU/USD<br>Forward<br>Rate</th>' +
+    '</tr>' +
+    '<tr>' +
+      '<td>' + formatExpiry(expiryDate) + '</td>' +
+      '<td>' + d0(xau) + '</td>' +
+      '<td>' + d2(inr) + '</td>' +
+      '<td>' + d0(spotWith) + '</td>' +
+      '<td>' + d0(mcxPerGram) + '</td>' +
+      '<td>' + fmtPrem(premium) + '</td>' +
+      '<td>' + fmtPct(annualised) + '</td>' +
+      '<td>' + d0(xauFwd) + '</td>' +
+    '</tr>' +
+    '</table>' +
+    '</div>';
 }
 
-async function load() {
-  try {
+function load() {
 
-    const res = await fetch(WORKER_URL, { cache: "no-store" });
-    const data = await res.json();
+  var exp = getExpiries();
+  var nearDate = exp.near.date;
+  var nextDate = exp.next.date;
+  var farDate = exp.far.date;
 
-    if (!data.ok) throw new Error("API returned not ok");
+  var nearCode = MN[exp.near.m];
+  var nextCode = MN[exp.next.m];
+  var farCode = MN[exp.far.m];
 
-    const xau = Number(data.xau);
-    const inr = Number(data.inr);
-    const { near, next, far } = getExpiries();
+  var workerURL = WORKER_BASE + "?near=" + nearCode + "&next=" + nextCode + "&far=" + farCode;
 
-    let html = "";
+  fetch(workerURL, { cache: "no-store" })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
 
-    if (data.mcx_near) {
-      html += buildTable(near, xau, inr, data.mcx_near);
-    }
+      if (!data.ok) throw new Error("not ok");
 
-    if (data.mcx_next) {
-      html += buildTable(next, xau, inr, data.mcx_next);
-    } else {
-      html += `<div class="card">
-        <div class="card-title">${monthDay(next)} Contract (${formatExpiry(next)})</div>
-        <p style="color:#ccc; padding:6px; font-size:11px; text-align:center;">
-          Next expiry data not available yet.
-        </p>
-      </div>`;
-    }
+      var xau = Number(data.xau);
+      var inr = Number(data.inr);
 
-    if (data.mcx_far) {
-      html += buildTable(far, xau, inr, data.mcx_far);
-    } else {
-      html += `<div class="card">
-        <div class="card-title">${monthDay(far)} Contract (${formatExpiry(far)})</div>
-        <p style="color:#ccc; padding:6px; font-size:11px; text-align:center;">
+      var nearPrice = data.mcx_near || data.mcx_jun || data.mcx_aug || null;
+      var nextPrice = data.mcx_next || data.mcx_aug || data.mcx_oct || null;
+      var farPrice = data.mcx_far || data.mcx_oct || null;
+
+      var html = "";
+
+      if (nearPrice) {
+        html += buildTable(nearDate, xau, inr, nearPrice);
+      }
+
+      if (nextPrice) {
+        html += buildTable(nextDate, xau, inr, nextPrice);
+      } else {
+        html += '<div class="card"><div class="card-title">' + monthDay(nextDate) + ' Contract (' + formatExpiry(nextDate) + ')</div>' +
+          '<p style="color:#ccc;padding:6px;font-size:11px;text-align:center;">Next expiry data not available yet.</p></div>';
+      }
+
+      if (farPrice) {
+        html += buildTable(farDate, xau, inr, farPrice);
+      } else {
+        html += '<div class="card"><div class="card-title">' + monthDay(farDate) + ' Contract (' + formatExpiry(farDate) + ')</div>' +
+          '<p style="color:#ccc;padding:6px;font-size:11px;text-align:center;">Far expiry data not available yet.</p></div>';
+      }
+
+      document.getElementById("tables").innerHTML = html;
+      lastFetchTime = Date.now();
+
+      document.getElementById("updated").innerHTML =
+        "Updated: " + new Date().toLocaleString();
+
+      document.getElementById("footer").innerHTML =
+        "Near: " + formatExpiry(nearDate) +
+        " &nbsp;|&nbsp; Next: " + formatExpiry(nextDate) +
+        " &nbsp;|&nbsp; Far: " + formatExpiry(farDate) +
+        " &nbsp;|&nbsp; Auto-rolling";
+    })
+    .catch(function(e) {
+      console.error(e);
+      document.getElementById("updated").innerHTML = "Error loading data";
+    });
+}
+
+setInterval(function() {
+  if (!lastFetchTime || (Date.now() - lastFetchTime) > STALE_LIMIT) load();
+}, 30000);
+
+document.addEventListener("visibilitychange", function() {
+  if (document.visibilityState === "visible") load();
+});
+
+window.addEventListener("focus", function() { load(); });
+
+load();
+
+</script>
+
+</body>
+</html>
